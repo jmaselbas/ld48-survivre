@@ -686,8 +686,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	render_queue_exec(&rqueue);
 
 	/* audio */
-#if 1
-	struct wav *wav = game_get_wav(game_asset, WAV_NL_SEQ_1);
+	struct wav *wav = game_get_wav(game_asset, WAV_WIND);
 	/* Offset of the current sample to play */
 	int16_t *samples = (int16_t *) wav->audio_data;
 	size_t  offset = game_state->sample_playhead;

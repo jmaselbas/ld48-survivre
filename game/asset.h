@@ -10,7 +10,7 @@ enum asset_key {
 	SHADER_SOLID,
 	SHADER_TEXT,
 	SHADER_WALL,
-	WAV_NL_SEQ_1,
+	WAV_WIND,
 	ASSET_KEY_COUNT,
 };
 
