@@ -107,7 +107,13 @@ jack_init(struct ring_buffer *ring_buffer)
 	jack_free(ports);
 }
 
+static void
+jack_step(void)
+{
+}
+
 struct audio_io *jack_io = &(struct audio_io) {
 	.init = jack_init,
 	.fini = jack_fini,
+	.step = jack_step,
 };
