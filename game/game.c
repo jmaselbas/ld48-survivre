@@ -696,15 +696,14 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 		if (offset >= wav->extras.nb_samples) {
 			offset = 0; /* loop over */
 		}
-		audio->buffer[i].r = vol * (float) (samples[offset] / (float) INT16_MAX);
-		audio->buffer[i].l = vol * (float) (samples[offset] / (float) INT16_MAX);
+		if ((i%2) == 0)
+			audio->buffer[i].r = vol * (float) (samples[offset] / (float) INT16_MAX);
+		else
+			audio->buffer[i].l = vol * (float) (samples[offset] / (float) INT16_MAX);
 		offset++;
 	}
 	/* new offset */
 	game_state->sample_playhead = offset;
-#else
-	for (int i = 0; i < audio->size; i++)
-		audio->buffer[i] = 0.0;
-#endif
+
 	game_asset_poll(game_asset);
 }
