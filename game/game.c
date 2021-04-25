@@ -171,6 +171,9 @@ game_init(struct game_memory *game_memory, struct file_io *file_io)
 
 	game_state->game_asset = game_asset;
 	game_asset_init(game_asset, &game_memory->asset, &game_memory->audio, file_io);
+
+	camera_init(&game_state->cam, 1.05, 1);
+	camera_set(&game_state->cam, (vec3){0, 0, -5}, QUATERNION_IDENTITY);
 }
 
 void
@@ -281,6 +284,7 @@ game_input(struct game_state *game_state, struct game_input *input)
 }
 
 enum entity_type {
+	ENTITY_DEBUG,
 	ENTITY_COUNT
 };
 
@@ -437,6 +441,10 @@ render_queue_exec(struct render_queue *queue)
 		if (camp >= 0)
 			glUniform3f(camp, cam->position.x, cam->position.y, cam->position.z);
 
+		GLint color = glGetUniformLocation(shader->prog, "color");
+		if (color >= 0)
+			glUniform3f(color, e.color.x, e.color.y, e.color.z);
+
 		if (last_mode != e.mode) {
 			last_mode = e.mode;
 			switch (e.mode) {
@@ -483,6 +491,44 @@ render_scene(struct game_state *game_state,
 	}
 }
 
+static void debug_origin_mark(struct render_queue *rqueue)
+{
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_DEBUG,
+			.shader = SHADER_SOLID,
+			.mesh = DEBUG_MESH_CROSS,
+			.scale = {1, 0, 0},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+			.color = {1, 0, 0},
+			.mode = GL_LINE,
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_DEBUG,
+			.shader = SHADER_SOLID,
+			.mesh = DEBUG_MESH_CROSS,
+			.scale = {0, 1, 0},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+			.color = {0, 1, 0},
+			.mode = GL_LINE,
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_DEBUG,
+			.shader = SHADER_SOLID,
+			.mesh = DEBUG_MESH_CROSS,
+			.scale = {0, 0, 1},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+			.color = {0, 0, 1},
+			.mode = GL_LINE,
+		});
+}
+
+struct entity level_1[] = {
+//	{ .mesh = MESH_FLOOR, .position = {  5,   3,  1.5 }, .scale = 1, .radius = 2, },
+};
+
 void
 game_step(struct game_memory *memory, struct game_input *input, struct game_audio *audio)
 {
@@ -491,8 +537,8 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	struct render_queue rqueue;
 	float dt = input->time - game_state->input.time;
 	struct scene scene = {
-		.count = 0,
-		.entity = NULL,
+		.count = ARRAY_LEN(level_1),
+		.entity = level_1,
 	};
 
 	memory->scrap.used = 0;
@@ -502,6 +548,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	game_input(game_state, input);
 
 	render_scene(game_state, game_asset, &scene, &rqueue);
+	debug_origin_mark(&rqueue);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	render_queue_exec(&rqueue);

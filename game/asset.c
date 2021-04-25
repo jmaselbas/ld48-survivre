@@ -38,6 +38,10 @@ union res_file {
 };
 
 static union res_file resfiles[ASSET_KEY_COUNT] = {
+	[SHADER_SOLID] = {
+		.vert = "res/proj.vert",
+		.frag = "res/solid.frag",
+	},
 };
 
 /* default tone for debugging purpose, make it all zeros for a silent sound */
@@ -120,6 +124,15 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 	struct res_data *res = &game_asset->assets[key];
 
 	switch (key) {
+	case SHADER_SOLID:
+		*res = asset_push_res_data(game_asset, sizeof(struct shader));
+		res_reload_shader(game_asset, key);
+		break;
+	case DEBUG_MESH_CROSS:
+		*res = asset_push_res_data(game_asset, sizeof(struct mesh));
+		mesh_load_cross(res->base, 1.0);
+		asset_state(game_asset, key, STATE_LOADED);
+		break;
 	default:
 		/* do nothing */
 		fprintf(stderr, "%s: asset key '%d' not handled\n", __func__, key);

@@ -2,6 +2,9 @@
 #define ASSET_H
 
 enum asset_key {
+	DEBUG_MESH_CROSS,
+	MESH_FLOOR,
+	SHADER_SOLID,
 	ASSET_KEY_COUNT,
 };
 
