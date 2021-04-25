@@ -256,11 +256,13 @@ res_reload_mesh_obj(struct game_asset *game_asset, enum asset_key key)
 static void
 res_reload_wav(struct game_asset *game_asset, enum asset_key key)
 {
-	struct wav *wav = game_asset->assets[key].base;
+	struct wav *wav;
 	union res_file *res = &resfiles[key];
 	struct asset_file file;
 
+	game_asset->assets[key] = asset_push_res_data(game_asset, sizeof(struct mesh));
 	file = res_load_file(game_asset, game_asset->samples, res->file);
+	wav = game_asset->assets[key].base;
 	if (file.data) {
 		load_wav(wav, file.data);
 		asset_since(game_asset, key, file.time);
