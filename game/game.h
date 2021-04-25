@@ -151,9 +151,14 @@ struct game_input {
 	unsigned char buttons[15];
 };
 
+struct sample {
+	float l;
+	float r;
+};
+
 struct game_audio {
 	size_t size; /* in sample */
-	float *buffer;
+	struct sample *buffer;
 };
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))

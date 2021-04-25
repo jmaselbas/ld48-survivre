@@ -7,7 +7,7 @@
 
 static ma_device device;
 struct ring_buffer *ring_buffer;
-size_t channels = 1;
+size_t channels = 2;
 size_t samplerate = 48000;
 
 static void
@@ -43,9 +43,9 @@ miniaudio_init(struct ring_buffer *audio_buffer)
 	size_t size;
 	void *base;
 	/* Allocate ring buffer */
-	size = 4 * channels * buffersize;
-	base = xvmalloc(NULL, 0, size * sizeof(float));
-	*audio_buffer = ring_buffer_init(base, size, sizeof(float));
+	size = 4 * buffersize;
+	base = xvmalloc(NULL, 0, size * channels * sizeof(float));
+	*audio_buffer = ring_buffer_init(base, size, channels * sizeof(float));
 	ring_buffer = audio_buffer;
 
         config.playback.format   = ma_format_f32;
