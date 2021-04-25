@@ -115,6 +115,14 @@ struct game_state {
 	struct game_asset *game_asset;
 	struct game_input input;
 
+	enum {
+		GAME_MENU,
+		GAME_PLAY,
+		GAME_PAUSE,
+	} state;
+
+	int menu_selection;
+
 	struct camera cam;
 	int flycam;
 	int flycam_forward, flycam_left;
@@ -174,6 +182,8 @@ game_init(struct game_memory *game_memory, struct file_io *file_io)
 
 	camera_init(&game_state->cam, 1.05, 1);
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
+
+	game_state->state = GAME_MENU;
 }
 
 void
@@ -200,7 +210,10 @@ game_input(struct game_state *game_state, struct game_input *input)
 
 	dx = input->xinc;
 	dy = input->yinc;
-	game_state->input.time = input->time;
+	game_state->input.xpos = input->xpos;
+	game_state->input.ypos = input->ypos;
+	game_state->input.xinc = input->xinc;
+	game_state->input.yinc = input->yinc;
 
 	for (key = 0; key < ARRAY_LEN(input->keys); key++) {
 		if (game_state->input.keys[key] == input->keys[key])
@@ -223,7 +236,7 @@ game_input(struct game_state *game_state, struct game_input *input)
 			break;
 		case 'Z':
 			if (action == KEY_PRESSED) {
-				game_state->flycam_speed = 2;
+				game_state->flycam_speed = 1;
 				game_state->flycam = !game_state->flycam;
 			}
 			break;
@@ -537,31 +550,61 @@ debug_origin_mark(struct render_queue *rqueue)
 static void
 game_menu(struct game_state *game_state, struct render_queue *rqueue)
 {
-	float ui_scale = 0.25;
+	struct game_input *input = &game_state->input;
+	float ratio = (double)input->width / (double)input->height;
+	vec3 scale = { 0.25, 0.25 * ratio, 0};
+	vec3 color_default  = {0.7,0.7,0.7};
+	vec3 color_selected = {0.9,0.9,0.9};
+	vec3 cursor = { 0 };
+	cursor.x = input->xpos / (double) input->width;
+	cursor.y = input->ypos / (double) input->height;
+	cursor.x = cursor.x * 2.0 - 1.0;
+	cursor.y = cursor.y * 2.0 - 1.0;
+	cursor.y *= -1;
 
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_UI,
 			.shader = SHADER_TEXT,
 			.mesh = MESH_MENU_START,
-			.scale = {ui_scale, ui_scale, 0},
+			.scale = scale,
 			.position = {0, 0, 0},
 			.rotation = QUATERNION_IDENTITY,
-			.color = {1, 1, 1},
+			.color = (cursor.y > 0) ? color_selected : color_default,
 		});
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_UI,
 			.shader = SHADER_TEXT,
 			.mesh = MESH_MENU_QUIT,
-			.scale = {ui_scale, ui_scale, 0},
+			.scale = scale,
 			.position = {0, -0.25, 0},
 			.rotation = QUATERNION_IDENTITY,
-			.color = {1, 1, 1},
+			.color = (cursor.y < 0) ? color_selected : color_default,
 		});
 }
 
 struct entity level_1[] = {
 //	{ .mesh = MESH_FLOOR, .position = {  5,   3,  1.5 }, .scale = 1, .radius = 2, },
 };
+
+static void
+flycam_move(struct game_state *game_state, float dt)
+{
+	vec3 forw = camera_get_dir(&game_state->cam);
+	vec3 left = camera_get_left(&game_state->cam);
+	vec3 dir;
+	float speed = game_state->flycam_speed * dt;
+
+	if (!(game_state->flycam_left || game_state->flycam_forward))
+		return;
+
+	forw = vec3_mult(game_state->flycam_forward, forw);
+	left = vec3_mult(game_state->flycam_left, left);
+	dir = vec3_add(forw, left);
+	dir = vec3_normalize(dir);
+	dir = vec3_mult(speed, dir);
+
+	camera_move(&game_state->cam, dir);
+}
 
 void
 game_step(struct game_memory *memory, struct game_input *input, struct game_audio *audio)
@@ -580,10 +623,17 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 			  mempush(&memory->scrap, SZ_4M), SZ_4M);
 
 	game_input(game_state, input);
-
-	game_menu(game_state, &rqueue);
-	render_scene(game_state, game_asset, &scene, &rqueue);
-	debug_origin_mark(&rqueue);
+	switch (game_state->state) {
+	case GAME_MENU:
+		game_menu(game_state, &rqueue);
+		break;
+	case GAME_PLAY:
+		break;
+	}
+	if (game_state->debug)
+		debug_origin_mark(&rqueue);
+	if (game_state->flycam)
+		flycam_move(game_state, dt);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	render_queue_exec(&rqueue);

@@ -127,7 +127,7 @@ focus_callback(GLFWwindow *window, int focus)
 {
 	focused = focus;
 	if (focused)
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	else
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
@@ -208,7 +208,7 @@ glfw_init(char *app_name)
 	glfwGetCursorPos(window, &xpre, &ypre);
 
 	glfwSetKeyCallback(window, key_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 static void
