@@ -13,6 +13,7 @@
 #include "engine/engine.h"
 #include "game/game.h"
 #include "plat/core.h"
+#include "plat/audio.h"
 
 #ifdef STATIC
 extern game_init_t game_init;
@@ -284,8 +285,6 @@ alloc_game_memory(struct game_memory *memory)
 	memory->asset = alloc_memory_zone(NULL, SZ_4M, SZ_16M);
 	memory->audio = alloc_memory_zone(NULL, SZ_4M, SZ_256M);
 }
-
-#include "plat/audio.h"
 
 int
 main(int argc, char **argv)

@@ -638,5 +638,9 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	render_queue_exec(&rqueue);
 
+	/* audio */
+	for (int i = 0; i < audio->size; i++)
+		audio->buffer[i] = 0.0;
+	
 	game_asset_poll(game_asset);
 }

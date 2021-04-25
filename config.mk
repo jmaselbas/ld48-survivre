@@ -4,6 +4,7 @@ VERSION = 0.1.2
 # Customize below to fit system
 CONFIG_JACK=n
 CONFIG_PULSE=n
+CONFIG_MINIAUDIO=y
 
 # Install paths
 PREFIX := /usr/local
@@ -66,6 +67,10 @@ endif
 ifeq ($(CONFIG_PULSE),y)
 LIBS += -lpthread -lpulse -lpulse-simple
 CFLAGS += -DCONFIG_PULSE
+endif
+ifeq ($(CONFIG_MINIAUDIO),y)
+LIBS += -lpthread
+CFLAGS += -DCONFIG_MINIAUDIO
 endif
 
 # Flags
