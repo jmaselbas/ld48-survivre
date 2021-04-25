@@ -52,6 +52,12 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[MESH_MENU_QUIT] = {
 		.file = "res/menu_quit.obj",
 	},
+	[MESH_MENU_QUIT] = {
+		.file = "res/menu_quit.obj",
+	},
+	[WAV_NL_SEQ_1] = {
+		.file = "res/audio/fx_wind_loop.wav",
+	},
 };
 
 /* default tone for debugging purpose, make it all zeros for a silent sound */
@@ -147,6 +153,9 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 	case MESH_MENU_QUIT:
 	case MESH_MENU_START:
 		res_reload_mesh_obj(game_asset, key);
+		break;
+	case WAV_NL_SEQ_1:
+		res_reload_wav(game_asset, key);
 		break;
 	default:
 		/* do nothing */

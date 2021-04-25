@@ -134,6 +134,8 @@ struct game_state {
 	vec3 player_new_pos;
 	float player_speed;
 
+	size_t sample_playhead;
+
 	int debug;
 };
 
@@ -184,6 +186,8 @@ game_init(struct game_memory *game_memory, struct file_io *file_io)
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 
 	game_state->state = GAME_MENU;
+
+	game_state->sample_playhead = 0;
 }
 
 void
@@ -639,8 +643,26 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	render_queue_exec(&rqueue);
 
 	/* audio */
+#if 1
+	struct wav *wav = game_get_wav(game_asset, WAV_NL_SEQ_1);
+	/* Offset of the current sample to play */
+	int16_t *samples = (int16_t *) wav->audio_data;
+	size_t  offset = game_state->sample_playhead;
+	const float vol = 0.5;
+
+	for (int i = 0; i < audio->size; i++) {
+		if (offset >= wav->extras.nb_samples) {
+			offset = 0; /* loop over */
+		}
+		audio->buffer[i].r = vol * (float) (samples[offset] / (float) INT16_MAX);
+		audio->buffer[i].l = vol * (float) (samples[offset] / (float) INT16_MAX);
+		offset++;
+	}
+	/* new offset */
+	game_state->sample_playhead = offset;
+#else
 	for (int i = 0; i < audio->size; i++)
 		audio->buffer[i] = 0.0;
-	
+#endif
 	game_asset_poll(game_asset);
 }
