@@ -11,6 +11,13 @@ struct file_io {
 	file_time_t *time;
 };
 
+typedef void (window_close_t)(void);
+typedef void (window_cursor_t)(int show);
+struct window_io {
+	window_close_t *close;  /* request window to be closed */
+	window_cursor_t *cursor; /* request cursor to be shown */
+};
+
 #define KEY_RELEASED            0
 #define KEY_PRESSED             1
 
@@ -185,7 +192,7 @@ struct game_memory {
 };
 
 /* typedef for function type */
-typedef void (game_init_t)(struct game_memory *memory, struct file_io *file_io);
+typedef void (game_init_t)(struct game_memory *memory, struct file_io *file_io, struct window_io *win_io);
 typedef void (game_step_t)(struct game_memory *memory,
 			   struct game_input  *input ,
 			   struct game_audio  *audio  );

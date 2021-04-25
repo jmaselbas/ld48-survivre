@@ -38,6 +38,10 @@ union res_file {
 };
 
 static union res_file resfiles[ASSET_KEY_COUNT] = {
+	[SHADER_WALL] = {
+		.vert = "res/proj.vert",
+		.frag = "res/wall.frag",
+	},
 	[SHADER_SOLID] = {
 		.vert = "res/proj.vert",
 		.frag = "res/solid.frag",
@@ -45,6 +49,9 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[SHADER_TEXT] = {
 		.vert = "res/orth.vert",
 		.frag = "res/solid.frag",
+	},
+	[MESH_WALL] = {
+		.file = "res/wall.obj",
 	},
 	[MESH_MENU_START] = {
 		.file = "res/menu_start.obj",
@@ -140,6 +147,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 	struct res_data *res = &game_asset->assets[key];
 
 	switch (key) {
+	case SHADER_WALL:
 	case SHADER_SOLID:
 	case SHADER_TEXT:
 		*res = asset_push_res_data(game_asset, sizeof(struct shader));
@@ -150,6 +158,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		mesh_load_cross(res->base, 1.0);
 		asset_state(game_asset, key, STATE_LOADED);
 		break;
+	case MESH_WALL:
 	case MESH_MENU_QUIT:
 	case MESH_MENU_START:
 		res_reload_mesh_obj(game_asset, key);
