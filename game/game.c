@@ -173,7 +173,7 @@ game_init(struct game_memory *game_memory, struct file_io *file_io)
 	game_asset_init(game_asset, &game_memory->asset, &game_memory->audio, file_io);
 
 	camera_init(&game_state->cam, 1.05, 1);
-	camera_set(&game_state->cam, (vec3){0, 0, -5}, QUATERNION_IDENTITY);
+	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 }
 
 void
@@ -285,6 +285,7 @@ game_input(struct game_state *game_state, struct game_input *input)
 
 enum entity_type {
 	ENTITY_DEBUG,
+	ENTITY_UI,
 	ENTITY_COUNT
 };
 
@@ -445,6 +446,10 @@ render_queue_exec(struct render_queue *queue)
 		if (color >= 0)
 			glUniform3f(color, e.color.x, e.color.y, e.color.z);
 
+		GLint v2res = glGetUniformLocation(shader->prog, "v2Resolution");
+		if (v2res >= 0)
+			glUniform2f(v2res, game_state->input.width, game_state->input.height);
+
 		if (last_mode != e.mode) {
 			last_mode = e.mode;
 			switch (e.mode) {
@@ -457,8 +462,11 @@ render_queue_exec(struct render_queue *queue)
 				break;
 			}
 		}
-
-		render_mesh(mesh);
+		switch (e.type) {
+		default:
+			render_mesh(mesh);
+			break;
+		}
 	}
 }
 
@@ -491,7 +499,8 @@ render_scene(struct game_state *game_state,
 	}
 }
 
-static void debug_origin_mark(struct render_queue *rqueue)
+static void
+debug_origin_mark(struct render_queue *rqueue)
 {
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_DEBUG,
@@ -525,6 +534,31 @@ static void debug_origin_mark(struct render_queue *rqueue)
 		});
 }
 
+static void
+game_menu(struct game_state *game_state, struct render_queue *rqueue)
+{
+	float ui_scale = 0.25;
+
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_UI,
+			.shader = SHADER_TEXT,
+			.mesh = MESH_MENU_START,
+			.scale = {ui_scale, ui_scale, 0},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+			.color = {1, 1, 1},
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_UI,
+			.shader = SHADER_TEXT,
+			.mesh = MESH_MENU_QUIT,
+			.scale = {ui_scale, ui_scale, 0},
+			.position = {0, -0.25, 0},
+			.rotation = QUATERNION_IDENTITY,
+			.color = {1, 1, 1},
+		});
+}
+
 struct entity level_1[] = {
 //	{ .mesh = MESH_FLOOR, .position = {  5,   3,  1.5 }, .scale = 1, .radius = 2, },
 };
@@ -547,6 +581,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 
 	game_input(game_state, input);
 
+	game_menu(game_state, &rqueue);
 	render_scene(game_state, game_asset, &scene, &rqueue);
 	debug_origin_mark(&rqueue);
 

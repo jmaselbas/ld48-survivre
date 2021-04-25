@@ -208,7 +208,7 @@ glfw_init(char *app_name)
 	glfwGetCursorPos(window, &xpre, &ypre);
 
 	glfwSetKeyCallback(window, key_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
 
 static void
