@@ -236,7 +236,7 @@ libgame_reload(struct libgame *libgame)
 			fprintf(stderr, "dlcose failed\n");
 	}
 
-	time = file_time("libs/libgame.so");
+	time = file_time("libgame.so");
 
 	/* clear previous error message  */
 	dlerror();
