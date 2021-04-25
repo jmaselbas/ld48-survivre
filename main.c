@@ -53,6 +53,7 @@ GLFWwindow *window;
 unsigned int width = 1080;
 unsigned int height = 800;
 int focused;
+int show_cursor;
 static double xpre, ypre;
 
 struct game_input game_input_next;
@@ -68,6 +69,27 @@ struct libgame {
 	game_init_t *init;
 	game_step_t *step;
 	game_fini_t *fini;
+};
+
+static void
+request_close(void)
+{
+	glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+static void
+request_cursor(int show)
+{
+	show_cursor = show;
+	if (show_cursor)
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+	else
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+struct window_io glfw_io = {
+	.close = request_close,
+	.cursor = request_cursor,
 };
 
 static void
@@ -312,7 +334,7 @@ main(int argc, char **argv)
 		die("GLEW init failed: %s\n", glewGetErrorString(ret));
 
 	if (libgame.init)
-		libgame.init(&game_memory, &file_io);
+		libgame.init(&game_memory, &file_io, &glfw_io);
 
 	audio_init(&audio_buffer);
 	double rate = 60; /* this is the default target refresh rate */

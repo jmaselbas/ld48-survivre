@@ -114,6 +114,7 @@ struct texture {
 struct game_state {
 	struct game_asset *game_asset;
 	struct game_input input;
+	struct window_io *window_io;
 
 	enum {
 		GAME_MENU,
@@ -121,6 +122,9 @@ struct game_state {
 		GAME_PAUSE,
 	} state;
 
+#define MENU_SEL_NONE 0
+#define MENU_SEL_PLAY 1
+#define MENU_SEL_QUIT 2
 	int menu_selection;
 
 	struct camera cam;
@@ -169,7 +173,7 @@ create_2d_tex(size_t w, size_t h, void *data)
 }
 
 void
-game_init(struct game_memory *game_memory, struct file_io *file_io)
+game_init(struct game_memory *game_memory, struct file_io *file_io, struct window_io *win_io)
 {
 	struct game_state *game_state;
 	struct game_asset *game_asset;
@@ -183,7 +187,8 @@ game_init(struct game_memory *game_memory, struct file_io *file_io)
 	camera_init(&game_state->cam, 1.05, 1);
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 
-	game_state->state = GAME_MENU;
+	game_state->window_io = win_io;
+	game_state->state = GAME_PLAY;
 }
 
 void
@@ -221,10 +226,9 @@ game_input(struct game_state *game_state, struct game_input *input)
 
 		action = input->keys[key];
 		switch (key) {
-		case 'Q':
-		case 'C':
 		case KEY_ESCAPE:
-				/* glfwSetWindowShouldClose(window, TRUE); */
+			/* glfwSetWindowShouldClose(window, TRUE); */
+			game_state->state = GAME_MENU;
 			break;
 		case 'F':
 			if (game_state->debug && action == KEY_PRESSED)
@@ -556,34 +560,63 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 	vec3 color_default  = {0.7,0.7,0.7};
 	vec3 color_selected = {0.9,0.9,0.9};
 	vec3 cursor = { 0 };
+	int sel = game_state->menu_selection;
 	cursor.x = input->xpos / (double) input->width;
 	cursor.y = input->ypos / (double) input->height;
 	cursor.x = cursor.x * 2.0 - 1.0;
 	cursor.y = cursor.y * 2.0 - 1.0;
 	cursor.y *= -1;
 
+	if (input->xinc || input->yinc) {
+		if (0.125 < cursor.y && cursor.y < 0.25)
+			sel = MENU_SEL_PLAY;
+		if (0 > cursor.y && cursor.y > -0.125)
+			sel = MENU_SEL_QUIT;
+	}
+
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_UI,
 			.shader = SHADER_TEXT,
 			.mesh = MESH_MENU_START,
 			.scale = scale,
-			.position = {0, 0, 0},
+			.position = {0, 0.125, 0},
 			.rotation = QUATERNION_IDENTITY,
-			.color = (cursor.y > 0) ? color_selected : color_default,
+			.color = (sel == MENU_SEL_PLAY) ? color_selected : color_default,
 		});
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_UI,
 			.shader = SHADER_TEXT,
 			.mesh = MESH_MENU_QUIT,
 			.scale = scale,
-			.position = {0, -0.25, 0},
+			.position = {0, -0.125, 0},
 			.rotation = QUATERNION_IDENTITY,
-			.color = (cursor.y < 0) ? color_selected : color_default,
+			.color = (sel == MENU_SEL_QUIT) ? color_selected : color_default,
 		});
+	if (input->keys[KEY_UP] == KEY_PRESSED) {
+		sel = MENU_SEL_PLAY;
+	} else if (input->keys[KEY_DOWN] == KEY_PRESSED) {
+		sel = MENU_SEL_QUIT;
+	}
+
+	if (input->keys[KEY_ENTER] == KEY_PRESSED) {
+		switch (sel) {
+		case MENU_SEL_PLAY:
+			game_state->state = GAME_PLAY;
+			game_state->window_io->cursor(0);
+			printf("start\n");
+			break;
+		case MENU_SEL_QUIT:
+			game_state->window_io->close();
+			printf("quit\n");
+			break;
+		}
+	}
+	game_state->menu_selection = sel;
 }
 
 struct entity level_1[] = {
-//	{ .mesh = MESH_FLOOR, .position = {  5,   3,  1.5 }, .scale = 1, .radius = 2, },
+	{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .position = { 0, 0, 0}, .scale = {1,1,1}, .color = {0,1,0}},
+	{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .position = { 0, 2, 0}, .scale = {1,1,1}, .color = {0,0,1}},
 };
 
 static void
@@ -606,6 +639,18 @@ flycam_move(struct game_state *game_state, float dt)
 	camera_move(&game_state->cam, dir);
 }
 
+static
+void
+game_play(struct game_state *game_state, struct game_asset *game_asset, struct render_queue *rqueue)
+{
+	struct scene scene = {
+		.count = ARRAY_LEN(level_1),
+		.entity = level_1,
+	};
+
+	render_scene(game_state, game_asset, &scene, rqueue);
+}
+
 void
 game_step(struct game_memory *memory, struct game_input *input, struct game_audio *audio)
 {
@@ -613,10 +658,6 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	struct game_asset *game_asset = memory->asset.base;
 	struct render_queue rqueue;
 	float dt = input->time - game_state->input.time;
-	struct scene scene = {
-		.count = ARRAY_LEN(level_1),
-		.entity = level_1,
-	};
 
 	memory->scrap.used = 0;
 	render_queue_init(&rqueue, game_state, game_asset,
@@ -628,6 +669,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 		game_menu(game_state, &rqueue);
 		break;
 	case GAME_PLAY:
+		game_play(game_state, game_asset, &rqueue);
 		break;
 	}
 	if (game_state->debug)
