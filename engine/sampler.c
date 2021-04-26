@@ -27,6 +27,9 @@ float step_sampler(struct sampler *sampler)
 	int pb_fini = (sampler->pb_head >= sampler->wav->extras.nb_frames);
 	float x = 0;
 
+	if (sampler->loop_start >= sampler->pb_end)
+		sampler->loop_on = 0;
+
 	switch(sampler->state){
 	case STOP:
 		if(trig_on) {
