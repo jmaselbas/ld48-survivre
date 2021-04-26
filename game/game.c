@@ -115,8 +115,10 @@ struct game_state {
 	struct game_asset *game_asset;
 	struct game_input input;
 	struct window_io *window_io;
+	float last_time;
 
 	enum {
+		GAME_INIT,
 		GAME_MENU,
 		GAME_PLAY,
 		GAME_PAUSE,
@@ -137,6 +139,7 @@ struct game_state {
 	vec3 player_pos;
 	vec3 player_new_pos;
 	float player_speed;
+	vec3 player_aim;
 
 	struct sampler theme_sampler;
 	struct wav *theme_wav;
@@ -144,6 +147,7 @@ struct game_state {
 	struct sampler wind_sampler;
 	struct wav *wind_wav;
 	int debug;
+	int key_debug;
 };
 
 static float clamp(float v, float a, float b)
@@ -193,7 +197,8 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 
 	game_state->window_io = win_io;
-	game_state->state = GAME_MENU;
+	game_state->state = GAME_INIT;
+	game_state->new_state = GAME_MENU;
 
 	/* audio */
 
@@ -216,109 +221,14 @@ game_fini(struct game_memory *memory)
 	game_asset_fini(game_asset);
 }
 
-static void
-game_input(struct game_state *game_state, struct game_input *input)
+static int
+key_pressed(struct game_input *input, int key)
 {
-	unsigned int key;
-	unsigned int action;
-	double dx, dy;
-
-	if (game_state->input.width != input->width ||
-	    game_state->input.height != input->height) {
-		glViewport(0, 0, input->width, input->height);
-		camera_set_ratio(&game_state->cam, (float)input->width / (float)input->height);
-		game_state->input.width = input->width;
-		game_state->input.height = input->height;
-	}
-
-	dx = input->xinc;
-	dy = input->yinc;
-	game_state->input.xpos = input->xpos;
-	game_state->input.ypos = input->ypos;
-	game_state->input.xinc = input->xinc;
-	game_state->input.yinc = input->yinc;
-
-	for (key = 0; key < ARRAY_LEN(input->keys); key++) {
-		if (game_state->input.keys[key] == input->keys[key])
-			continue;
-
-		action = input->keys[key];
-		switch (key) {
-		case KEY_ESCAPE:
-			/* glfwSetWindowShouldClose(window, TRUE); */
-			game_state->new_state = GAME_MENU;
-			break;
-		case 'F':
-			if (game_state->debug && action == KEY_PRESSED)
-				game_asset_fini(game_state->game_asset);
-			break;
-		case KEY_LEFT_SHIFT:
-		case KEY_RIGHT_SHIFT:
-			game_state->flycam_speed = (action == KEY_PRESSED) ? 10 : 1;
-			break;
-		case 'Z':
-			if (action == KEY_PRESSED) {
-				game_state->flycam_speed = 1;
-				game_state->flycam = !game_state->flycam;
-			}
-			break;
-		case 'X':
-			if (action == KEY_PRESSED)
-				game_state->debug = !game_state->debug;
-			break;
-		case 'A':
-		case KEY_LEFT:
-			if (action == KEY_PRESSED)
-				game_state->flycam_left = 1;
-			else if (game_state->flycam_left > 0)
-				game_state->flycam_left = 0;
-			break;
-		case 'D':
-		case KEY_RIGHT:
-			if (action == KEY_PRESSED)
-				game_state->flycam_left = -1;
-			else if (game_state->flycam_left < 0)
-				game_state->flycam_left = 0;
-			break;
-		case 'W':
-		case KEY_UP:
-			if (action == KEY_PRESSED)
-				game_state->flycam_forward = 1;
-			else if (game_state->flycam_forward > 0)
-				game_state->flycam_forward = 0;
-			break;
-		case 'S':
-		case KEY_DOWN:
-			if (action == KEY_PRESSED)
-				game_state->flycam_forward = -1;
-			else if (game_state->flycam_forward < 0)
-				game_state->flycam_forward = 0;
-			break;
-		default:
-			break;
-		}
-		game_state->input.keys[key] = input->keys[key];
-	}
-
-	game_state->input.buttons[0] = input->buttons[0];
-
-	/* This is the debug flycam */
-	if (game_state->flycam) {
-		vec3 left;
-
-		camera_rotate(&game_state->cam, VEC3_AXIS_Y, -0.001 * dx);
-		left = camera_get_left(&game_state->cam);
-		left = vec3_normalize(left);
-		camera_rotate(&game_state->cam, left, 0.001 * dy);
-	} else {
-		quaternion q = quaternion_axis_angle(VEC3_AXIS_Y, -0.001 * dx);
-		game_state->player_dir = quaternion_mult(q, game_state->player_dir);
-		game_state->player_lookup += 0.001 * dy;
-		game_state->player_lookup = clamp(game_state->player_lookup, -0.5 * M_PI, 0.5 * M_PI);
-	}
+	return input->keys[key] == KEY_PRESSED;
 }
 
 enum entity_type {
+	ENTITY_GAME,
 	ENTITY_DEBUG,
 	ENTITY_UI,
 	ENTITY_COUNT
@@ -333,10 +243,6 @@ struct entity {
 	vec3 position;
 	vec3 scale;
 	vec3 color;
-	struct entity_textures {
-		const char *name;
-		struct texture *texture;
-	} textures[8];
 };
 
 struct render_queue {
@@ -448,6 +354,8 @@ render_queue_exec(struct render_queue *queue)
 
 	for (i = 0; i < queue->count; i++) {
 		struct entity e = entry[i];
+		if (!game_state->debug && e.type == ENTITY_DEBUG)
+			continue;
 
 		if (!shader || last_shader != e.shader) {
 			last_shader = e.shader;
@@ -598,6 +506,10 @@ game_enter_state(struct game_state *game_state, int state)
 		game_state->window_io->cursor(1); /* show */
 		break;
 	case GAME_PLAY:
+		game_state->player_speed = 1;
+		game_state->player_aim = VEC3_ZERO;
+		game_state->player_pos = VEC3_ZERO;
+		game_state->player_dir = QUATERNION_IDENTITY;
 		game_state->window_io->cursor(0); /* hide */
 		break;
 	default:
@@ -607,9 +519,8 @@ game_enter_state(struct game_state *game_state, int state)
 }
 
 static void
-game_menu(struct game_state *game_state, struct render_queue *rqueue)
+game_menu(struct game_state *game_state, struct game_input *input, struct render_queue *rqueue)
 {
-	struct game_input *input = &game_state->input;
 	float ratio = (double)input->width / (double)input->height;
 	vec3 scale = { 0.25, 0.25 * ratio, 0};
 	vec3 color_default  = {0.7,0.7,0.7};
@@ -647,13 +558,13 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 			.rotation = QUATERNION_IDENTITY,
 			.color = (sel == MENU_SEL_QUIT) ? color_selected : color_default,
 		});
-	if (input->keys[KEY_UP] == KEY_PRESSED) {
+	if (key_pressed(input, KEY_UP)) {
 		sel = MENU_SEL_PLAY;
-	} else if (input->keys[KEY_DOWN] == KEY_PRESSED) {
+	} else if (key_pressed(input, KEY_DOWN)) {
 		sel = MENU_SEL_QUIT;
 	}
 
-	if (input->keys[KEY_ENTER] == KEY_PRESSED) {
+	if (key_pressed(input, KEY_ENTER)) {
 		switch (sel) {
 		case MENU_SEL_PLAY:
 			game_state->new_state = GAME_PLAY;
@@ -666,20 +577,152 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 	game_state->menu_selection = sel;
 }
 
-struct entity level_1[] = {
-	{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .position = { 0, 0, 0}, .scale = {1,1,1}, .color = {0,1,0}},
-	{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .position = { 0, 2, 0}, .scale = {1,1,1}, .color = {0,0,1}},
-};
-
 static void
-game_play(struct game_state *game_state, struct game_asset *game_asset, struct render_queue *rqueue)
+game_play(struct game_state *game_state, struct game_input *input, float dt, struct render_queue *rqueue)
 {
+	struct game_asset *game_asset = game_state->game_asset;
+	vec3 wall_scale = (vec3){1, 1, 1};
+	float wallext = wall_scale.y * 40;
+	struct entity level_1[] = {
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (0 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (1 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (2 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 2.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (3 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.3) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (4 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.7) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (5 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (6 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 2.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (7 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.2) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (8 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 3.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * (9 - 10), 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.1) },
+
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 0, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 1, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 2, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 2.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 3, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.3) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 4, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.7) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 5, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 6, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 2.1) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 7, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 1.2) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 8, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 3.4) },
+		{ .type = 0, .mesh = MESH_WALL, .shader = SHADER_WALL, .scale = wall_scale, .color = {},
+		  .position = { 0, wallext * 9, 0}, .rotation = quaternion_axis_angle(VEC3_AXIS_Y, 0.1) },
+	};
 	struct scene scene = {
 		.count = ARRAY_LEN(level_1),
 		.entity = level_1,
 	};
+	vec3 cap = {0, wallext * 10, 0};
+	vec3 cam;
+	vec3 pos = game_state->player_pos;
+	vec3 spd = (vec3){0, -250, 0};
+	vec3 inc = vec3_mult(dt, spd);
+	vec3 aim = game_state->player_aim;
+	vec3 aim_inc = { 0 };
+	float aim_spd = 0.1;
 
+	if (key_pressed(input, 'A') || key_pressed(input, KEY_LEFT)) {
+		aim_inc.x += dt * aim_spd;
+	}
+	else if (key_pressed(input, 'D') || key_pressed(input, KEY_RIGHT)) {
+		aim_inc.x -= dt * aim_spd;
+	}
+	if (key_pressed(input, 'W') || key_pressed(input, KEY_UP)) {
+		aim_inc.z += dt * aim_spd;
+	}
+	else if (key_pressed(input, 'S') || key_pressed(input, KEY_DOWN)) {
+		aim_inc.z -= dt * aim_spd;
+	}
+	if (aim_inc.x != 0 || aim_inc.z != 0)
+		aim_inc = vec3_normalize(aim_inc);
+	aim = vec3_mult(0.9, aim);
+	aim = vec3_add(aim, vec3_mult(aim_spd, aim_inc));
+	aim.y = 0;
+
+	pos = vec3_add(pos, vec3_mult(game_state->player_speed, aim));
+	float posy = pos.y;
+	pos.y = 0;
+	float wall_radius = 25;
+	if (vec3_norm(pos) > wall_radius)
+		pos = vec3_mult(wall_radius, vec3_normalize(pos));
+
+	pos.y = posy + inc.y;
+
+	vec3 cam_look = vec3_add(pos, vec3_mult(0.2, aim));
+	cam_look.y = pos.y - 5;
+
+	cam = pos;
+	cam.y += 3;
+	camera_set(&game_state->cam, cam, QUATERNION_IDENTITY);
+	camera_look_at(&game_state->cam, cam_look, VEC3_AXIS_Z);
+
+	vec3 rot_dir = {cam_look.x - pos.x, -0.8, 1};
+	quaternion player_look = quaternion_look_at(rot_dir, VEC3_AXIS_Y);
+
+	/* end cap position */
+	cap.y = pos.y - cap.y;
+
+	/* render */	
 	render_scene(game_state, game_asset, &scene, rqueue);
+	render_queue_push(rqueue, &(struct entity){
+			.type = 0,
+			.shader = SHADER_WALL,
+			.mesh = MESH_CAP,
+			.scale = wall_scale,
+			.position = cap,
+			.rotation = QUATERNION_IDENTITY,
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = 0,
+			.shader = SHADER_WALL,
+			.mesh = MESH_PLAYER,
+			.scale = {0.25, 0.25, 0.25},
+			.position = pos,
+			.rotation = player_look,
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_DEBUG,
+			.shader = SHADER_SOLID,
+			.mesh = DEBUG_MESH_CROSS,
+			.scale = {0.1,0.1,0.1},
+			.position = pos,
+			.rotation = QUATERNION_IDENTITY,
+			.color = {0,1,0},
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_DEBUG,
+			.shader = SHADER_SOLID,
+			.mesh = DEBUG_MESH_CROSS,
+			.scale = {0.1,0.1,0.1},
+			.position = cam_look,
+			.rotation = QUATERNION_IDENTITY,
+			.color = {1,0,0},
+		});
+
+	/* wrap position */
+	if (pos.y < 0)
+		pos.y = wallext * 10;
+	game_state->player_pos = pos;
+	game_state->player_aim = aim;
+
 }
 
 void
@@ -688,22 +731,35 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	struct game_state *game_state = memory->state.base;
 	struct game_asset *game_asset = memory->asset.base;
 	struct render_queue rqueue;
-	float dt = input->time - game_state->input.time;
+	float dt = input->time - game_state->last_time;
+	game_state->last_time = input->time;
 
 	memory->scrap.used = 0;
 	render_queue_init(&rqueue, game_state, game_asset,
 			  mempush(&memory->scrap, SZ_4M), SZ_4M);
 
+	if (game_state->input.width != input->width ||
+	    game_state->input.height != input->height) {
+		glViewport(0, 0, input->width, input->height);
+		camera_set_ratio(&game_state->cam, (float)input->width / (float)input->height);
+		game_state->input.width = input->width;
+		game_state->input.height = input->height;
+	}
+	if (key_pressed(input, KEY_ESCAPE))
+		game_state->new_state = GAME_MENU;
+	if (key_pressed(input, 'X') && !game_state->key_debug)
+		game_state->debug = !game_state->debug;
+	game_state->key_debug = key_pressed(input, 'X');
+
 	if (game_state->state != game_state->new_state)
 		game_enter_state(game_state, game_state->new_state);
 
-	game_input(game_state, input);
 	switch (game_state->state) {
 	case GAME_MENU:
-		game_menu(game_state, &rqueue);
+		game_menu(game_state, input, &rqueue);
 		break;
 	case GAME_PLAY:
-		game_play(game_state, game_asset, &rqueue);
+		game_play(game_state, input, dt, &rqueue);
 		break;
 	default:
 		break;
@@ -719,7 +775,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	/* audio */
 	float sample_l, sample_r;
 	for (int i = 0; i < audio->size; i++) {
-		if (game_state->state == PLAY) {
+		if (game_state->state == GAME_PLAY) {
 			sample_l = step_sampler(&game_state->wind_sampler);
 			sample_r = step_sampler(&game_state->wind_sampler);
 		}
