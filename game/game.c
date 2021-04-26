@@ -120,7 +120,7 @@ struct game_state {
 		GAME_MENU,
 		GAME_PLAY,
 		GAME_PAUSE,
-	} state;
+	} state, new_state;
 
 #define MENU_SEL_NONE 0
 #define MENU_SEL_PLAY 1
@@ -193,7 +193,7 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 
 	game_state->window_io = win_io;
-	game_state->state = GAME_PLAY;
+	game_state->state = GAME_MENU;
 
 	/* audio */
 
@@ -570,6 +570,43 @@ debug_origin_mark(struct render_queue *rqueue)
 }
 
 static void
+flycam_move(struct game_state *game_state, float dt)
+{
+	vec3 forw = camera_get_dir(&game_state->cam);
+	vec3 left = camera_get_left(&game_state->cam);
+	vec3 dir;
+	float speed = game_state->flycam_speed * dt;
+
+	if (!(game_state->flycam_left || game_state->flycam_forward))
+		return;
+
+	forw = vec3_mult(game_state->flycam_forward, forw);
+	left = vec3_mult(game_state->flycam_left, left);
+	dir = vec3_add(forw, left);
+	dir = vec3_normalize(dir);
+	dir = vec3_mult(speed, dir);
+
+	camera_move(&game_state->cam, dir);
+}
+
+
+static void
+game_enter_state(struct game_state *game_state, int state)
+{
+	switch (state) {
+	case GAME_MENU:
+		game_state->window_io->cursor(1); /* show */
+		break;
+	case GAME_PLAY:
+		game_state->window_io->cursor(0); /* hide */
+		break;
+	default:
+		break;
+	}
+	game_state->state = state;
+}
+
+static void
 game_menu(struct game_state *game_state, struct render_queue *rqueue)
 {
 	struct game_input *input = &game_state->input;
@@ -619,13 +656,10 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 	if (input->keys[KEY_ENTER] == KEY_PRESSED) {
 		switch (sel) {
 		case MENU_SEL_PLAY:
-			game_state->state = GAME_PLAY;
-			game_state->window_io->cursor(0);
-			printf("start\n");
+			game_state->new_state = GAME_PLAY;
 			break;
 		case MENU_SEL_QUIT:
 			game_state->window_io->close();
-			printf("quit\n");
 			break;
 		}
 	}
@@ -638,27 +672,6 @@ struct entity level_1[] = {
 };
 
 static void
-flycam_move(struct game_state *game_state, float dt)
-{
-	vec3 forw = camera_get_dir(&game_state->cam);
-	vec3 left = camera_get_left(&game_state->cam);
-	vec3 dir;
-	float speed = game_state->flycam_speed * dt;
-
-	if (!(game_state->flycam_left || game_state->flycam_forward))
-		return;
-
-	forw = vec3_mult(game_state->flycam_forward, forw);
-	left = vec3_mult(game_state->flycam_left, left);
-	dir = vec3_add(forw, left);
-	dir = vec3_normalize(dir);
-	dir = vec3_mult(speed, dir);
-
-	camera_move(&game_state->cam, dir);
-}
-
-static
-void
 game_play(struct game_state *game_state, struct game_asset *game_asset, struct render_queue *rqueue)
 {
 	struct scene scene = {
@@ -681,6 +694,9 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	render_queue_init(&rqueue, game_state, game_asset,
 			  mempush(&memory->scrap, SZ_4M), SZ_4M);
 
+	if (game_state->state != game_state->new_state)
+		game_enter_state(game_state, game_state->new_state);
+
 	game_input(game_state, input);
 	switch (game_state->state) {
 	case GAME_MENU:
@@ -688,6 +704,8 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 		break;
 	case GAME_PLAY:
 		game_play(game_state, game_asset, &rqueue);
+		break;
+	default:
 		break;
 	}
 	if (game_state->debug)
