@@ -286,7 +286,7 @@ libgame_changed(struct libgame *libgame)
 #ifndef STATIC
 	time_t new_time;
 
-	new_time = file_time("libs/libgame.so");
+	new_time = file_time("libgame.so");
 
 	return libgame->time < new_time;
 #endif
