@@ -232,8 +232,6 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	game_state->wind_sampler.trig_on = 1;
 	game_state->wind_sampler.loop_start = 805661 * 2; /* Loop start after fadein */
 
-	printf("%ld nb_samples_wind \n", game_state->wind_wav->extras.nb_samples);
-
 	game_state->menu_wav = game_get_wav(game_asset, WAV_MENU);
 	sampler_init(&game_state->menu_sampler, game_state->menu_wav);
 	game_state->menu_sampler.vol = 0.3;
