@@ -3,28 +3,23 @@
 #include "core.h"
 #include "audio.h"
 
-struct ring_buffer *dummy_buffer;
-
 void
-dummy_init(struct ring_buffer *audio_buffer)
+dummy_init(struct audio_state *audio)
 {
-	size_t size = 512 * 2;
-	float *base = xvmalloc(NULL, 0, size * sizeof(float));
-	*audio_buffer = ring_buffer_init(base, size, sizeof(float));
-	dummy_buffer = audio_buffer;
+	UNUSED(audio);
 }
 
 void
-dummy_fini(void)
+dummy_fini(struct audio_state *audio)
 {
-	free(dummy_buffer->base);
+	UNUSED(audio);
 }
 
 void
-dummy_step(void)
+dummy_step(struct audio_state *audio)
 {
-	size_t count = ring_buffer_read_size(dummy_buffer);
-	ring_buffer_read_done(dummy_buffer, count);
+	size_t count = ring_buffer_read_size(&audio->buffer);
+	ring_buffer_read_done(&audio->buffer, count);
 }
 
 struct audio_io *dummy_io = &(struct audio_io){
@@ -53,8 +48,34 @@ extern struct audio_io *miniaudio_io;
 
 struct audio_io *audio_io;
 
+static size_t
+frame_size(enum audio_format format)
+{
+	switch (format) {
+	case AUDIO_FORMAT_U8:
+		return sizeof(unsigned char);
+	case AUDIO_FORMAT_S16:
+		return sizeof(short);
+	case AUDIO_FORMAT_F32:
+		return sizeof(float);
+	}
+}
+
+struct audio_state
+audio_create(struct audio_config config)
+{
+	struct audio_state audio = { .config = config };
+	size_t frame = config.channels * frame_size(config.format);
+	size_t count = 4 * 512;
+	void *data = xvmalloc(NULL, 0, count * frame);
+
+	audio.buffer = ring_buffer_init(data, count, frame);
+
+	return audio;
+}
+
 void
-audio_init(struct ring_buffer *audio_buffer)
+audio_init(struct audio_state *audio)
 {
 	/* grab the first available audio backend */
 	if (!audio_io && jack_io)
@@ -66,17 +87,19 @@ audio_init(struct ring_buffer *audio_buffer)
 	if (!audio_io)
 		audio_io = dummy_io;
 
-	audio_io->init(audio_buffer);
+	audio_io->init(audio);
 }
 
 void
-audio_fini(void)
+audio_fini(struct audio_state *audio)
 {
-	audio_io->fini();
+	audio_io->fini(audio);
+
+	free(audio->buffer.base);
 }
 
 void
-audio_step(void)
+audio_step(struct audio_state *audio)
 {
-	audio_io->step();
+	audio_io->step(audio);
 }

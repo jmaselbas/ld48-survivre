@@ -61,7 +61,13 @@ struct game_input game_input;
 struct game_audio game_audio;
 struct game_memory game_memory;
 
-struct ring_buffer audio_buffer;
+struct audio_config audio_config = {
+	.samplerate = 48000,
+	.channels = 2,
+	.format = AUDIO_FORMAT_F32,
+};
+
+struct audio_state audio_state;
 
 struct libgame {
 	void *handle;
@@ -336,7 +342,8 @@ main(int argc, char **argv)
 	if (libgame.init)
 		libgame.init(&game_memory, &file_io, &glfw_io);
 
-	audio_init(&audio_buffer);
+	audio_state = audio_create(audio_config);
+	audio_init(&audio_state);
 	double rate = 60; /* this is the default target refresh rate */
 
 	while (!glfwWindowShouldClose(window)) {
@@ -346,16 +353,16 @@ main(int argc, char **argv)
 		glfwPollEvents();
 
 		/* get an audio buffer */
-		game_audio.size   = ring_buffer_write_size(&audio_buffer);
-		game_audio.buffer = ring_buffer_write_addr(&audio_buffer);
+		game_audio.size   = ring_buffer_write_size(&audio_state.buffer);
+		game_audio.buffer = ring_buffer_write_addr(&audio_state.buffer);
 
 		swap_input(&game_input, &game_input_next);
 		if (libgame.step)
 			libgame.step(&game_memory, &game_input, &game_audio);
 
 		/* finalize audio write */
-		ring_buffer_write_done(&audio_buffer, game_audio.size);
-		audio_step();
+		ring_buffer_write_done(&audio_state.buffer, game_audio.size);
+		audio_step(&audio_state);
 
 		glfwSwapBuffers(window);
 		rate = rate_limit(300);
@@ -366,7 +373,7 @@ main(int argc, char **argv)
 
 	glfw_fini();
 
-	audio_fini();
+	audio_fini(&audio_state);
 
 	return 0;
 }
