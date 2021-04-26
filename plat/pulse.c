@@ -18,31 +18,37 @@ static pa_volume_t volume = PA_VOLUME_NORM;
 static pa_sample_spec sample_spec = {
 	.format = PA_SAMPLE_S16LE,
 	.rate = 48000,
-	.channels = 1,
+	.channels = 2,
 };
 
 static pthread_mutex_t mutex;
 static pthread_cond_t cond;
 static volatile int quit;
+struct sample {
+	float l;
+	float r;
+};
 
-static void stream_write_callback(pa_stream *s, size_t nframes, void *userdata) {
-	struct ring_buffer *ring_buffer = userdata;
+static void stream_write_callback(pa_stream *s, size_t nframes, void *userdata)
+{
+	struct audio_state *audio = userdata;
 	size_t k = pa_frame_size(&sample_spec);
-	int16_t buf[512];
+	int16_t buf[sample_spec.channels *  512];
 	size_t count, i;
-	float *audio;
+	struct sample *data;
 
 	while (nframes > 0) {
-		count = ring_buffer_read_size(ring_buffer);
-		audio = ring_buffer_read_addr(ring_buffer);
+		count = ring_buffer_read_size(&audio->buffer);
+		data = ring_buffer_read_addr(&audio->buffer);
 		if (count > 0) {
 			count = MIN(count, 512);
 			count = MIN(count, nframes);
 			for (i = 0; i < count; i++) {
-				buf[i] = INT16_MAX * audio[i];
+				buf[i * 2 + 0] = INT16_MAX * data[i].l;
+				buf[i * 2 + 1] = INT16_MAX * data[i].r;
 			}
 			pa_stream_write(s, buf, k * count, NULL, 0, PA_SEEK_RELATIVE);
-			ring_buffer_read_done(ring_buffer, count);
+			ring_buffer_read_done(&audio->buffer, count);
 			nframes -= count;
 		} else {
 			/* no more audio to write to pulseaudio server */
@@ -98,7 +104,7 @@ static void context_state_callback(pa_context *c, void *userdata)
 
 		/* tlength: target length aka latency */
 		/* latency * frame_per_sec * sizeof_frame */
-		attr.tlength = 0.050 * 48000 * sizeof(int16_t);
+		attr.tlength = 0.050 * 48000 * 2 * sizeof(int16_t);
 		attr.prebuf = -1; /* pre-buffering */
 		attr.minreq = -1;//512 * sizeof(int16_t);
 
@@ -136,31 +142,19 @@ pthread_t pulse_thread;
 pa_mainloop *mainloop;
 
 static void
-pulse_step(void)
+pulse_step(struct audio_state *audio)
 {
+	UNUSED(audio);
 	/* signal audio thread */
 	pthread_cond_signal(&cond);
 }
 
 static void
-pulse_init(struct ring_buffer *audio_buffer)
+pulse_init(struct audio_state *audio)
 {
 	int ret;
 	char *client_name = "drone";
 	char *server_name = NULL;
-
-	/* Ring size in nb of audio buffers */
-	size_t buffersize = 512; /* In samples */
-	size_t samplerate = 48000;
-	size_t buffer_count;
-	size_t audio_size; /* In samples */
-	void *audio_base;
-	const size_t nb_channel = 1;
-	double min_fps = 30.0;
-	buffer_count = 0.5 + 4 * (1.0 / min_fps) * (samplerate / (double)buffersize);
-	audio_size = buffer_count * buffersize * nb_channel;
-	audio_base = xvmalloc(NULL, 0, audio_size * sizeof(float));
-	*audio_buffer = ring_buffer_init(audio_base, audio_size, sizeof(float));
 
 	/* Set up a new main loop */
 	mainloop = pa_mainloop_new();
@@ -179,7 +173,7 @@ pulse_init(struct ring_buffer *audio_buffer)
 		goto quit;
 	}
 
-	pa_context_set_state_callback(context, context_state_callback, audio_buffer);
+	pa_context_set_state_callback(context, context_state_callback, audio);
 
 	/* Connect the context */
 	if (pa_context_connect(context, server_name, 0, NULL) < 0) {
@@ -203,8 +197,9 @@ quit:
 }
 
 static void
-pulse_fini(void)
+pulse_fini(struct audio_state *audio)
 {
+	UNUSED(audio);
 	quit = 1;
 	if (mainloop) {
 		pa_mainloop_quit(mainloop, 0);
