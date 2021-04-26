@@ -68,7 +68,7 @@ audio_create(struct audio_config config)
 {
 	struct audio_state audio = { .config = config };
 	size_t frame = config.channels * frame_size(config.format);
-	size_t count = 4 * 512;
+	size_t count = 8 * 512;
 	void *data = xvmalloc(NULL, 0, count * frame);
 
 	audio.buffer = ring_buffer_init(data, count, frame);
