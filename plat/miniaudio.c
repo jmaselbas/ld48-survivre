@@ -6,29 +6,37 @@
 #include "miniaudio.h"
 
 static ma_device device;
-struct ring_buffer *ring_buffer;
-size_t channels = 2;
-size_t samplerate = 48000;
+
+static pthread_mutex_t mutex;
+static pthread_cond_t cond;
+static volatile int quit;
+
+static struct audio_state *audio_state;
 
 static void
 miniaudio_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount)
 {
-        // In playback mode copy data to pOutput. In capture mode read data from pInput. In full-duplex mode, both
-        // pOutput and pInput will be valid and you can move data from pInput into pOutput. Never process more than
-        // frameCount frames.
+	struct audio_state *audio = audio_state;
+	int channels = audio->config.channels;
 	size_t count;
-	float *audio;
+	float *data;
 
 	UNUSED(pDevice);
 	UNUSED(pInput);
 
-	count = ring_buffer_read_size(ring_buffer);
-	audio = ring_buffer_read_addr(ring_buffer);
-	count = MIN(count, frameCount);
-	if (count > 0) {
-		ma_copy_pcm_frames(pOutput, audio, count, ma_format_f32, channels);
-		ring_buffer_read_done(ring_buffer, count);
-		frameCount -= count;
+	while (frameCount > 0 && !quit) {
+		count = ring_buffer_read_size(&audio->buffer);
+		data  = ring_buffer_read_addr(&audio->buffer);
+		count = MIN(count, frameCount);
+		if (count > 0) {
+			ma_copy_pcm_frames(pOutput, data, count, ma_format_f32, channels);
+			ring_buffer_read_done(&audio->buffer, count);
+			frameCount -= count;
+			pOutput += count;
+		} else {
+			/* no more audio to write */
+			pthread_cond_wait(&cond, &mutex);
+		}
 	}
 
 	if (frameCount > 0)
@@ -36,41 +44,46 @@ miniaudio_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 }
 
 static void
-miniaudio_init(struct ring_buffer *audio_buffer)
+miniaudio_init(struct audio_state *audio)
 {
 	ma_device_config config  = ma_device_config_init(ma_device_type_playback);
-	size_t buffersize = 512; /* In samples */
-	size_t size;
-	void *base;
-	/* Allocate ring buffer */
-	size = 4 * buffersize;
-	base = xvmalloc(NULL, 0, size * channels * sizeof(float));
-	*audio_buffer = ring_buffer_init(base, size, channels * sizeof(float));
-	ring_buffer = audio_buffer;
 
-        config.playback.format   = ma_format_f32;
-        config.playback.channels = channels;
-        config.sampleRate        = samplerate;
+        config.playback.format   = ma_format_f32; /* TODO: handle format type conversion */
+        config.playback.channels = audio->config.channels;
+        config.sampleRate        = audio->config.samplerate;
         config.dataCallback      = miniaudio_callback;
-        config.pUserData         = NULL;
+        config.pUserData         = audio;
+	audio_state = audio;
 
         if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
 		die("Failed to initialize miniaudio\n");
         }
 
+	if (pthread_mutex_init(&mutex, NULL) != 0)
+		die("pthread_mutex_init() error");
+
+	if (pthread_cond_init(&cond, NULL) != 0)
+		die("pthread_cond_init() error");
+	quit = 0;
+
         ma_device_start(&device);
 }
 
 static void
-miniaudio_fini(void)
+miniaudio_fini(struct audio_state *audio)
 {
+	UNUSED(audio);
+	quit = 1;
+	pthread_cond_signal(&cond);
 	ma_device_uninit(&device);
 }
 
 static void
-miniaudio_step(void)
+miniaudio_step(struct audio_state *audio)
 {
-	
+	UNUSED(audio);
+	/* signal audio thread */
+	pthread_cond_signal(&cond);	
 }
 
 struct audio_io *miniaudio_io = &(struct audio_io) {
