@@ -59,6 +59,8 @@ frame_size(enum audio_format format)
 	case AUDIO_FORMAT_F32:
 		return sizeof(float);
 	}
+	die("wrong audio format\n");
+	return 0;
 }
 
 struct audio_state
