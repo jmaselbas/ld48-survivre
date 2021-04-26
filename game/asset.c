@@ -56,6 +56,9 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[MESH_WALL] = {
 		.file = "res/wall.obj",
 	},
+	[MESH_ROOM] = {
+		.file = "res/room.obj",
+	},
 	[MESH_CAP] = {
 		.file = "res/cap.obj",
 	},
@@ -196,6 +199,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		asset_state(game_asset, key, STATE_LOADED);
 		break;
 	case MESH_WALL:
+	case MESH_ROOM:
 	case MESH_CAP:
 	case MESH_PLAYER:
 	case MESH_MENU_QUIT:

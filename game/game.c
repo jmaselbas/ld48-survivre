@@ -571,6 +571,11 @@ game_enter_state(struct game_state *game_state, int state)
 {
 	switch (state) {
 	case GAME_MENU:
+	{
+		vec3 pos = {    0.38,     2.59,    -1.51};
+		quaternion rot = {{   -0.02,    -0.20,    -0.00}, 0.979742};
+		camera_set(&game_state->cam, pos, rot);
+	}
 		game_state->window_io->cursor(1); /* show */
 		break;
 	case GAME_PLAY:
@@ -610,6 +615,14 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 		}
 	}
 
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_GAME,
+			.shader = SHADER_WALL,
+			.mesh = MESH_ROOM,
+			.scale = {1,1,1},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+		});
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_UI,
 			.shader = SHADER_TEXT,
