@@ -224,7 +224,8 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	sampler_init(&game_state->casey_sampler, game_state->casey_wav);
 	game_state->casey_sampler.loop_on = 1;
 	game_state->casey_sampler.trig_on = 1;
-	game_state->casey_sampler.vol = 1;
+	game_state->casey_sampler.vol = 0.8;
+	game_state->casey_sampler.loop_start = 7899500 * 2;
 
 	game_state->wind_wav = game_get_wav(game_asset, WAV_WIND);
 	sampler_init(&game_state->wind_sampler, game_state->wind_wav);
