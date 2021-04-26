@@ -246,7 +246,7 @@ game_input(struct game_state *game_state, struct game_input *input)
 		switch (key) {
 		case KEY_ESCAPE:
 			/* glfwSetWindowShouldClose(window, TRUE); */
-			game_state->state = GAME_MENU;
+			game_state->new_state = GAME_MENU;
 			break;
 		case 'F':
 			if (game_state->debug && action == KEY_PRESSED)
