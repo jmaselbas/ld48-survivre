@@ -133,6 +133,7 @@ struct game_state {
 	int flycam;
 	int flycam_forward, flycam_left;
 	float flycam_speed;
+	int key_flycam;
 
 	quaternion player_dir;
 	float player_lookup;
@@ -208,13 +209,13 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 
 	camera_init(&game_state->cam, 1.05, 1);
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
+	game_state->flycam_speed = 1;
 
 	game_state->window_io = win_io;
 	game_state->state = GAME_INIT;
 	game_state->new_state = GAME_MENU;
 
 	/* audio */
-
 	game_state->theme_wav = game_get_wav(game_asset, WAV_THEME);
 	sampler_init(&game_state->theme_sampler, game_state->theme_wav);
 	game_state->theme_sampler.loop_on = 1;
@@ -517,23 +518,51 @@ debug_origin_mark(struct render_queue *rqueue)
 }
 
 static void
-flycam_move(struct game_state *game_state, float dt)
+flycam_move(struct game_state *game_state, struct game_input *input, float dt)
 {
 	vec3 forw = camera_get_dir(&game_state->cam);
 	vec3 left = camera_get_left(&game_state->cam);
-	vec3 dir;
+	vec3 dir = { 0 };
 	float speed = game_state->flycam_speed * dt;
 
-	if (!(game_state->flycam_left || game_state->flycam_forward))
-		return;
+	game_state->flycam_forward = 0;
+	if (key_pressed(input, 'W'))
+		game_state->flycam_forward = 1;
+	else if (key_pressed(input, 'S'))
+		game_state->flycam_forward = -1;
+	game_state->flycam_left = 0;
+	if (key_pressed(input, 'A'))
+		game_state->flycam_left = 1;
+	else if (key_pressed(input, 'D'))
+		game_state->flycam_left = -1;
 
-	forw = vec3_mult(game_state->flycam_forward, forw);
-	left = vec3_mult(game_state->flycam_left, left);
-	dir = vec3_add(forw, left);
-	dir = vec3_normalize(dir);
-	dir = vec3_mult(speed, dir);
+	if (game_state->flycam_left || game_state->flycam_forward) {
+		forw = vec3_mult(game_state->flycam_forward, forw);
+		left = vec3_mult(game_state->flycam_left, left);
+		dir = vec3_add(forw, left);
+		dir = vec3_normalize(dir);
+		dir = vec3_mult(speed, dir);
+		camera_move(&game_state->cam, dir);
+	}
 
-	camera_move(&game_state->cam, dir);
+	float dx = input->xinc;
+	float dy = input->yinc;
+
+	if (dx || dy) {
+		camera_rotate(&game_state->cam, VEC3_AXIS_Y, -0.001 * dx);
+		left = camera_get_left(&game_state->cam);
+		left = vec3_normalize(left);
+		camera_rotate(&game_state->cam, left, 0.001 * dy);
+	}
+
+	/* drop camera config to stdout */
+	if (key_pressed(input, KEY_SPACE)) {
+		printf("camera position:\n");
+		print_vec3(game_state->cam.position);
+		printf("camera rotation:\n");
+		print_vec3(game_state->cam.rotation.v);
+		printf("%f\n", game_state->cam.rotation.w);
+	}
 }
 
 
@@ -800,6 +829,9 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	if (key_pressed(input, 'X') && !game_state->key_debug)
 		game_state->debug = !game_state->debug;
 	game_state->key_debug = key_pressed(input, 'X');
+	if (key_pressed(input, 'Z') && !game_state->key_flycam)
+		game_state->flycam = !game_state->flycam;
+	game_state->key_flycam = key_pressed(input, 'Z');
 
 	if (game_state->state != game_state->new_state)
 		game_enter_state(game_state, game_state->new_state);
@@ -817,7 +849,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	if (game_state->debug)
 		debug_origin_mark(&rqueue);
 	if (game_state->flycam)
-		flycam_move(game_state, dt);
+		flycam_move(game_state, input, dt);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	render_queue_exec(&rqueue);
