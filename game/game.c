@@ -269,8 +269,9 @@ key_pressed(struct game_input *input, int key)
 
 enum entity_type {
 	ENTITY_GAME,
-	ENTITY_DEBUG,
+	ENTITY_SCREEN,
 	ENTITY_UI,
+	ENTITY_DEBUG,
 	ENTITY_COUNT
 };
 
@@ -419,7 +420,7 @@ render_queue_exec(struct render_queue *queue)
 
 		GLint time = glGetUniformLocation(shader->prog, "time");
 		if (time >= 0)
-			glUniform1f(time, game_state->input.time);
+			glUniform1f(time, game_state->last_time);
 
 		GLint camp = glGetUniformLocation(shader->prog, "camp");
 		if (camp >= 0)
@@ -573,7 +574,7 @@ game_enter_state(struct game_state *game_state, int state)
 	case GAME_MENU:
 	{
 		vec3 pos = {    0.38,     2.59,    -1.51};
-		quaternion rot = {{   -0.02,    -0.20,    -0.00}, 0.979742};
+		quaternion rot = {{   -0.00,    -0.13,     0.00}, 0.991398};
 		camera_set(&game_state->cam, pos, rot);
 	}
 		game_state->window_io->cursor(1); /* show */
@@ -619,6 +620,14 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 			.type = ENTITY_GAME,
 			.shader = SHADER_WALL,
 			.mesh = MESH_ROOM,
+			.scale = {1,1,1},
+			.position = {0, 0, 0},
+			.rotation = QUATERNION_IDENTITY,
+		});
+	render_queue_push(rqueue, &(struct entity){
+			.type = ENTITY_SCREEN,
+			.shader = SHADER_SCREEN,
+			.mesh = MESH_SCREEN,
 			.scale = {1,1,1},
 			.position = {0, 0, 0},
 			.rotation = QUATERNION_IDENTITY,
@@ -842,8 +851,10 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	if (key_pressed(input, 'X') && !game_state->key_debug)
 		game_state->debug = !game_state->debug;
 	game_state->key_debug = key_pressed(input, 'X');
-	if (key_pressed(input, 'Z') && !game_state->key_flycam)
+	if (key_pressed(input, 'Z') && !game_state->key_flycam) {
 		game_state->flycam = !game_state->flycam;
+		game_state->window_io->cursor(!game_state->flycam);
+	}
 	game_state->key_flycam = key_pressed(input, 'Z');
 
 	if (game_state->state != game_state->new_state)

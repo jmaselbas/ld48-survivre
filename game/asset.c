@@ -46,6 +46,10 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 		.vert = "res/proj.vert",
 		.frag = "res/solid.frag",
 	},
+	[SHADER_SCREEN] = {
+		.vert = "res/proj.vert",
+		.frag = "res/screen.frag",
+	},
 	[SHADER_TEXT] = {
 		.vert = "res/orth.vert",
 		.frag = "res/solid.frag",
@@ -58,6 +62,9 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	},
 	[MESH_ROOM] = {
 		.file = "res/room.obj",
+	},
+	[MESH_SCREEN] = {
+		.file = "res/screen.obj",
 	},
 	[MESH_CAP] = {
 		.file = "res/cap.obj",
@@ -189,6 +196,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 	switch (key) {
 	case SHADER_WALL:
 	case SHADER_SOLID:
+	case SHADER_SCREEN:
 	case SHADER_TEXT:
 		*res = asset_push_res_data(game_asset, sizeof(struct shader));
 		res_reload_shader(game_asset, key);
@@ -200,6 +208,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		break;
 	case MESH_WALL:
 	case MESH_ROOM:
+	case MESH_SCREEN:
 	case MESH_CAP:
 	case MESH_PLAYER:
 	case MESH_MENU_QUIT:
