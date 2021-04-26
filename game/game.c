@@ -647,7 +647,7 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 		sel = MENU_SEL_QUIT;
 	}
 
-	if (key_pressed(input, KEY_ENTER)) {
+	if (key_pressed(input, KEY_ENTER) || input->buttons[0]) {
 		switch (sel) {
 		case MENU_SEL_PLAY:
 			game_state->new_state = GAME_PLAY;
