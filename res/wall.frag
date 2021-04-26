@@ -5,11 +5,11 @@ in vec3 position;
 in vec2 texcoord;
 out vec4 out_color;
 
-const float fogdensity = 0.0005;
-const vec3 fogcolor = vec3(0.5*0.247, 0.231, 0.165);
+const float fogdensity = 0.001;
+const vec3 fogcolor = vec3(0.4, 0.6, 0.8);
 
-const vec3 bot = vec3(0.40, 0.40, 0.27);
-const vec3 top = vec3(0.10, 0.11, 0.08);
+const vec3 bot = vec3(0.40, 0.5, 0.47);
+const vec3 top = vec3(0.10, 0.14, 0.2);
 
 const vec3 sun = normalize(vec3(1, 0.75, 0));
 uniform vec3 camp;
