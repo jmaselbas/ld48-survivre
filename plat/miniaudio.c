@@ -31,8 +31,8 @@ miniaudio_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 		if (count > 0) {
 			ma_copy_pcm_frames(pOutput, data, count, ma_format_f32, channels);
 			ring_buffer_read_done(&audio->buffer, count);
+			pOutput += count * ma_get_bytes_per_frame(ma_format_f32, channels);
 			frameCount -= count;
-			pOutput += count;
 		} else {
 			/* no more audio to write */
 			pthread_cond_wait(&cond, &mutex);
