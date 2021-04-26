@@ -7,7 +7,7 @@ sampler_init(struct sampler *sampler, struct wav *wav)
 	sampler->wav      = wav;
 	sampler->state    = STOP;
 	sampler->pb_start = 0;
-	sampler->pb_end   = wav->extras.nb_frames;
+	sampler->pb_end   = wav->extras.nb_samples;
 	sampler->pb_head  = 0;
 	/* Loop */
 	sampler->loop_on  = 0;
@@ -24,7 +24,7 @@ float step_sampler(struct sampler *sampler)
 	float vol = sampler->vol;
 	int trig_on = sampler->trig_on;
 	size_t offset = sampler->pb_head;
-	int pb_fini = (sampler->pb_head >= sampler->wav->extras.nb_frames);
+	int pb_fini = (sampler->pb_head >= sampler->wav->extras.nb_samples);
 	float x = 0;
 
 	if (sampler->loop_start >= sampler->pb_end)
