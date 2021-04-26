@@ -21,9 +21,9 @@ static pa_sample_spec sample_spec = {
 	.channels = 1,
 };
 
-pthread_mutex_t mutex;
-pthread_cond_t cond;
-volatile int quit;
+static pthread_mutex_t mutex;
+static pthread_cond_t cond;
+static volatile int quit;
 
 static void stream_write_callback(pa_stream *s, size_t nframes, void *userdata) {
 	struct ring_buffer *ring_buffer = userdata;
