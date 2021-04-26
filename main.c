@@ -86,11 +86,9 @@ request_close(void)
 static void
 request_cursor(int show)
 {
-	show_cursor = show;
-	if (show_cursor)
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-	else
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	show_cursor = show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
+
+	glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
 }
 
 struct window_io glfw_io = {
@@ -156,7 +154,7 @@ focus_callback(GLFWwindow *window, int focus)
 {
 	focused = focus;
 	if (focused)
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
 	else
 		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
@@ -237,7 +235,8 @@ glfw_init(char *app_name)
 	glfwGetCursorPos(window, &xpre, &ypre);
 
 	glfwSetKeyCallback(window, key_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	show_cursor = GLFW_CURSOR_DISABLED;
+	glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
 }
 
 static void
@@ -286,7 +285,7 @@ libgame_changed(struct libgame *libgame)
 #ifndef STATIC
 	time_t new_time;
 
-	new_time = file_time("libs/libgame.so");
+	new_time = file_time("libgame.so");
 
 	return libgame->time < new_time;
 #endif
