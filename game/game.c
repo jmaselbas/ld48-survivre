@@ -141,8 +141,21 @@ struct game_state {
 	struct sampler theme_sampler;
 	struct wav *theme_wav;
 
+	struct sampler casey_sampler;
+	struct wav *casey_wav;
+
 	struct sampler wind_sampler;
 	struct wav *wind_wav;
+
+	struct sampler menu_sampler;
+	struct wav *menu_wav;
+
+	struct sampler woosh_sampler[4];
+	struct wav *woosh_wav[4];
+
+	struct sampler crash_sampler[4];
+	struct wav *crash_wav[4];
+
 	int debug;
 };
 
@@ -202,11 +215,38 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	game_state->theme_sampler.loop_on = 1;
 	game_state->theme_sampler.trig_on = 1;
 
+	game_state->casey_wav = game_get_wav(game_asset, WAV_CASEY);
+	sampler_init(&game_state->casey_sampler, game_state->casey_wav);
+	game_state->casey_sampler.loop_on = 1;
+	game_state->casey_sampler.trig_on = 1;
+	game_state->casey_sampler.vol = 1;
+
 	game_state->wind_wav = game_get_wav(game_asset, WAV_WIND);
 	sampler_init(&game_state->wind_sampler, game_state->wind_wav);
 	game_state->wind_sampler.loop_on = 1;
 	game_state->wind_sampler.trig_on = 1;
-	game_state->wind_sampler.loop_start = 805661; /* Loop start after fadein */
+	game_state->wind_sampler.loop_start = 805661 * 2; /* Loop start after fadein */
+
+	printf("%ld nb_samples_wind \n", game_state->wind_wav->extras.nb_samples);
+
+	game_state->menu_wav = game_get_wav(game_asset, WAV_MENU);
+	sampler_init(&game_state->menu_sampler, game_state->menu_wav);
+	game_state->menu_sampler.vol = 0.3;
+
+	for (size_t i = 0; i < 4; i++) {
+		game_state->woosh_wav[i] =
+			game_get_wav(game_asset, WAV_WOOSH_00 + i);
+		sampler_init(&game_state->woosh_sampler[i],
+			     game_state->woosh_wav[i]);
+		game_state->woosh_sampler[i].vol = 0.4;
+	}
+	for (size_t i = 0; i < 4; i++) {
+		game_state->crash_wav[i] =
+			game_get_wav(game_asset, WAV_CRASH_00 + i);
+		sampler_init(&game_state->crash_sampler[i],
+			     game_state->crash_wav[i]);
+		game_state->crash_sampler[i].vol = 0.4;
+	}
 }
 
 void
@@ -623,10 +663,12 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 	cursor.y *= -1;
 
 	if (input->xinc || input->yinc) {
-		if (0.125 < cursor.y && cursor.y < 0.25)
+		if (0.125 < cursor.y && cursor.y < 0.25) {
 			sel = MENU_SEL_PLAY;
-		if (0 > cursor.y && cursor.y > -0.125)
+		}
+		if (0 > cursor.y && cursor.y > -0.125) {
 			sel = MENU_SEL_QUIT;
+		}
 	}
 
 	render_queue_push(rqueue, &(struct entity){
@@ -663,7 +705,16 @@ game_menu(struct game_state *game_state, struct render_queue *rqueue)
 			break;
 		}
 	}
+	if (game_state->menu_selection != sel) {
+		game_state->menu_sampler.trig_on = 1;
+#if 0
+		size_t i = rand()%4;
+		game_state->crash_sampler[i].trig_on = 1;
+#endif
+	}
+
 	game_state->menu_selection = sel;
+
 }
 
 struct entity level_1[] = {
@@ -719,13 +770,23 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	/* audio */
 	float sample_l, sample_r;
 	for (int i = 0; i < audio->size; i++) {
-		if (game_state->state == PLAY) {
+		if (game_state->state == GAME_PLAY) {
 			sample_l = step_sampler(&game_state->wind_sampler);
 			sample_r = step_sampler(&game_state->wind_sampler);
 		}
 		else {
 			sample_l = step_sampler(&game_state->theme_sampler);
 			sample_r = step_sampler(&game_state->theme_sampler);
+			sample_l += step_sampler(&game_state->casey_sampler);
+			sample_r += step_sampler(&game_state->casey_sampler);
+			sample_l += step_sampler(&game_state->menu_sampler);
+			sample_r += step_sampler(&game_state->menu_sampler);
+			for (size_t i = 0; i<4; i++) {
+				sample_l += step_sampler(&game_state->woosh_sampler[i]);
+				sample_r += step_sampler(&game_state->woosh_sampler[i]);
+				sample_l += step_sampler(&game_state->crash_sampler[i]);
+				sample_r += step_sampler(&game_state->crash_sampler[i]);
+			}
 		}
 			audio->buffer[i].r = sample_r;
 			audio->buffer[i].l = sample_l;

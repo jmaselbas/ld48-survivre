@@ -62,8 +62,38 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[WAV_THEME] = {
 		.file = "res/audio/LD48_loop_fade.ogg",
 	},
+	[WAV_CASEY] = {
+		.file = "res/audio/casey.ogg",
+	},
 	[WAV_WIND] = {
 		.file = "res/audio/fx_wind_loop.ogg",
+	},
+	[WAV_MENU] = {
+		.file = "res/audio/fx_bip_01.wav",
+	},
+	[WAV_WOOSH_00] = {
+		.file = "res/audio/fx_woosh_01.wav",
+	},
+	[WAV_WOOSH_01] = {
+		.file = "res/audio/fx_woosh_02.wav",
+	},
+	[WAV_WOOSH_02] = {
+		.file = "res/audio/fx_woosh_03.wav",
+	},
+	[WAV_WOOSH_03] = {
+		.file = "res/audio/fx_woosh_04.wav",
+	},
+	[WAV_CRASH_00] = {
+		.file = "res/audio/fx_crash_01.wav",
+	},
+	[WAV_CRASH_01] = {
+		.file = "res/audio/fx_crash_02.wav",
+	},
+	[WAV_CRASH_02] = {
+		.file = "res/audio/fx_crash_03.wav",
+	},
+	[WAV_CRASH_03] = {
+		.file = "res/audio/fx_crash_04.wav",
 	},
 };
 
@@ -165,8 +195,22 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		res_reload_mesh_obj(game_asset, key);
 		break;
 	case WAV_THEME:
+	case WAV_CASEY:
 	case WAV_WIND:
 		res_reload_ogg(game_asset, key);
+		break;
+	case WAV_MENU:
+		res_reload_wav(game_asset, key);
+		break;
+	case WAV_WOOSH_00:
+	case WAV_WOOSH_01:
+	case WAV_WOOSH_02:
+	case WAV_WOOSH_03:
+	case WAV_CRASH_00:
+	case WAV_CRASH_01:
+	case WAV_CRASH_02:
+	case WAV_CRASH_03:
+		res_reload_wav(game_asset, key);
 		break;
 	default:
 		/* do nothing */
