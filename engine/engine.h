@@ -15,7 +15,7 @@
 #include "ring_buffer.h"
 
 #include "wav.h"
-
+#include "sampler.h"
 struct shader {
 	GLuint prog;
 	GLuint vert;
