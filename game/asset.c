@@ -62,10 +62,10 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[MESH_MENU_QUIT] = {
 		.file = "res/menu_quit.obj",
 	},
-	[WAV_THEME] = {
+	[WAV_THEME] = { /* dans home du rpi */
 		.file = "res/audio/LD48_loop_fade.wav",
 	},
-	[WAV_WIND] = {
+	[WAV_WIND] = { /* dans home du rpi */
 		.file = "res/audio/fx_wind_loop.wav",
 	},
 };
