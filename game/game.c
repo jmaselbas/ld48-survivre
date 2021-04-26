@@ -138,8 +138,11 @@ struct game_state {
 	vec3 player_new_pos;
 	float player_speed;
 
-	size_t sample_playhead;
+	struct sampler theme_sampler;
+	struct wav *theme_wav;
 
+	struct sampler wind_sampler;
+	struct wav *wind_wav;
 	int debug;
 };
 
@@ -189,11 +192,21 @@ game_init(struct game_memory *game_memory, struct file_io *file_io, struct windo
 	camera_init(&game_state->cam, 1.05, 1);
 	camera_set(&game_state->cam, (vec3){0, 1, -5}, QUATERNION_IDENTITY);
 
-	game_state->sample_playhead = 0;
-
 	game_state->window_io = win_io;
 	game_state->state = GAME_PLAY;
 
+	/* audio */
+
+	game_state->theme_wav = game_get_wav(game_asset, WAV_THEME);
+	sampler_init(&game_state->theme_sampler, game_state->theme_wav);
+	game_state->theme_sampler.loop_on = 1;
+	game_state->theme_sampler.trig_on = 1;
+
+	game_state->wind_wav = game_get_wav(game_asset, WAV_WIND);
+	sampler_init(&game_state->wind_sampler, game_state->wind_wav);
+	game_state->wind_sampler.loop_on = 1;
+	game_state->wind_sampler.trig_on = 1;
+	game_state->wind_sampler.loop_start = 805661; /* Loop start after fadein */
 }
 
 void
@@ -686,24 +699,19 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 	render_queue_exec(&rqueue);
 
 	/* audio */
-	struct wav *wav = game_get_wav(game_asset, WAV_WIND);
-	/* Offset of the current sample to play */
-	int16_t *samples = (int16_t *) wav->audio_data;
-	size_t  offset = game_state->sample_playhead;
-	const float vol = 0.5;
-
+	float sample_l, sample_r;
 	for (int i = 0; i < audio->size; i++) {
-		if (offset >= wav->extras.nb_samples) {
-			offset = 0; /* loop over */
+		if (game_state->state == PLAY) {
+			sample_l = step_sampler(&game_state->wind_sampler);
+			sample_r = step_sampler(&game_state->wind_sampler);
 		}
-		if ((i%2) == 0)
-			audio->buffer[i].r = vol * (float) (samples[offset] / (float) INT16_MAX);
-		else
-			audio->buffer[i].l = vol * (float) (samples[offset] / (float) INT16_MAX);
-		offset++;
+		else {
+			sample_l = step_sampler(&game_state->theme_sampler);
+			sample_r = step_sampler(&game_state->theme_sampler);
+		}
+			audio->buffer[i].r = sample_r;
+			audio->buffer[i].l = sample_l;
 	}
-	/* new offset */
-	game_state->sample_playhead = offset;
 
 	game_asset_poll(game_asset);
 }
