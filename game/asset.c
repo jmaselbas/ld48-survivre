@@ -59,14 +59,11 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[MESH_MENU_QUIT] = {
 		.file = "res/menu_quit.obj",
 	},
-	[MESH_MENU_QUIT] = {
-		.file = "res/menu_quit.obj",
+	[WAV_THEME] = {
+		.file = "res/audio/LD48_loop_fade.ogg",
 	},
-	[WAV_THEME] = { /* dans home du rpi */
-		.file = "res/audio/LD48_loop_fade.wav",
-	},
-	[WAV_WIND] = { /* dans home du rpi */
-		.file = "res/audio/fx_wind_loop.wav",
+	[WAV_WIND] = {
+		.file = "res/audio/fx_wind_loop.ogg",
 	},
 };
 
@@ -103,7 +100,7 @@ static struct wav silent_wav = {
 	.header = { .channels = 1 },
 	.extras = {
 		.samplesize = sizeof(tone[0]),
-		.nb_frames = 1,
+		.nb_frames = ARRAY_LEN(tone),
 		.nb_samples = ARRAY_LEN(tone),
 	},
 	.audio_data = tone,
@@ -114,6 +111,7 @@ static int res_file_changed(struct game_asset *game_asset, union res_file *res, 
 static void res_reload_shader(struct game_asset *game_asset, enum asset_key key);
 static void res_reload_mesh_obj(struct game_asset *game_asset, enum asset_key key);
 static void res_reload_wav(struct game_asset *game_asset, enum asset_key key);
+static void res_reload_ogg(struct game_asset *game_asset, enum asset_key key);
 
 static void load_wav(struct wav *wav, char *obj);
 static struct obj_info read_obj_info(struct asset_file *file);
@@ -168,7 +166,7 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		break;
 	case WAV_THEME:
 	case WAV_WIND:
-		res_reload_wav(game_asset, key);
+		res_reload_ogg(game_asset, key);
 		break;
 	default:
 		/* do nothing */
@@ -292,6 +290,35 @@ res_reload_wav(struct game_asset *game_asset, enum asset_key key)
 	}
 	/* samples memory zone is not freed */
 }
+
+#include "stb_vorbis.c"
+
+static void
+res_reload_ogg(struct game_asset *game_asset, enum asset_key key)
+{
+	struct memory_zone mem_state = *game_asset->samples;
+	struct wav *wav;
+	union res_file *res = &resfiles[key];
+	struct asset_file file;
+	int channels, samplerate, frames;
+	uint16_t *output;
+
+	file = res_load_file(game_asset, game_asset->samples, res->file);
+	if (file.data) {
+		frames = stb_vorbis_decode_memory(file.data, file.size, &channels, &samplerate, &output);
+		game_asset->assets[key] = asset_push_res_data(game_asset, sizeof(struct wav));
+
+		wav = game_asset->assets[key].base;
+		wav->extras.samplesize = sizeof(uint16_t);
+		wav->extras.nb_frames = frames;
+		wav->extras.nb_samples = frames * channels;
+		wav->header.channels = channels;
+		wav->audio_data = output;
+	}
+	/* restore memory zone */
+	*game_asset->samples = mem_state;
+}
+
 
 static int
 res_file_changed(struct game_asset *game_asset, union res_file *res, time_t since)
