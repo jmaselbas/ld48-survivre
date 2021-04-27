@@ -41,7 +41,7 @@ DLL = glew32.dll glfw3.dll
 # dynlib is the default target for now, not meant for release
 all: dynlib
 
-static: CFLAGS += -DSTATIC -ffunction-sections
+static: CFLAGS += -DSTATIC
 static: $(BIN);
 
 # dynlib build enable game code hot reloading
@@ -56,12 +56,17 @@ $(BIN): main.o $(plt-obj) $(obj)
 
 $(BIN).x86_64: FORCE
 	make clean
-	make static
+	make RELEASE=y static
+	mv $(BIN) $@
+
+$(BIN).x86: FORCE
+	make clean
+	make RELEASE=y TARGET=x86 static
 	mv $(BIN) $@
 
 $(BIN).exe: FORCE
 	make clean
-	make TARGET=w64 static
+	make RELEASE=1 TARGET=w64 static
 FORCE:;
 .PHONY: FORCE
 

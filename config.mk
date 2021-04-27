@@ -25,15 +25,13 @@ ifeq ($(TARGET),x86)
 PKG_CONFIG_PATH = /usr/lib32/pkgconfig/
 CFLAGS += -m32
 LDFLAGS += -m32
-LIBDIR = .
+LIBDIR = lib32
 LIBNAME = libgame.so
 LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
-LDFLAGS += -l:libGLEW.a
 else ifeq ($(TARGET),)
-LIBDIR = .
+LIBDIR = lib64
 LIBNAME = libgame.so
 LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
-LDFLAGS += -l:libGLEW.a
 endif
 
 ifneq ($(CROSS_COMPILE),)
@@ -81,8 +79,10 @@ CFLAGS += -DCONFIG_MINIAUDIO
 endif
 
 # Flags
-CFLAGS +=  -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L
-#CFLAGS += -O2 -W -fPIC -g -Wall
-CFLAGS += -O3 -W -fPIC -Wall -s
+CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L
+CFLAGS += -O2 -W -fPIC -Wall -g
+ifneq ($(RELEASE),)
+CFLAGS += -s -ffunction-sections
+endif
 CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
 LDFLAGS += $(LIBS)
