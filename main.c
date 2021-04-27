@@ -347,7 +347,6 @@ main(int argc, char **argv)
 
 	audio_state = audio_create(audio_config);
 	audio_init(&audio_state);
-	double rate = 60; /* this is the default target refresh rate */
 
 	while (!glfwWindowShouldClose(window)) {
 		if (libgame_changed(&libgame))
@@ -368,7 +367,7 @@ main(int argc, char **argv)
 		audio_step(&audio_state);
 
 		glfwSwapBuffers(window);
-		rate = rate_limit(300);
+		rate_limit(300);
 	}
 
 	if (libgame.fini)
