@@ -60,6 +60,9 @@ static union res_file resfiles[ASSET_KEY_COUNT] = {
 	[MESH_WALL] = {
 		.file = "res/wall.obj",
 	},
+	[MESH_ROCK] = {
+		.file = "res/rock.obj",
+	},
 	[MESH_ROOM] = {
 		.file = "res/room.obj",
 	},
@@ -201,12 +204,18 @@ asset_reload(struct game_asset *game_asset, enum asset_key key)
 		*res = asset_push_res_data(game_asset, sizeof(struct shader));
 		res_reload_shader(game_asset, key);
 		break;
+	case DEBUG_MESH_CYLINDER:
+		*res = asset_push_res_data(game_asset, sizeof(struct mesh));
+		mesh_load_cylinder(res->base, 2, 1, 16);
+		asset_state(game_asset, key, STATE_LOADED);
+		break;
 	case DEBUG_MESH_CROSS:
 		*res = asset_push_res_data(game_asset, sizeof(struct mesh));
 		mesh_load_cross(res->base, 1.0);
 		asset_state(game_asset, key, STATE_LOADED);
 		break;
 	case MESH_WALL:
+	case MESH_ROCK:
 	case MESH_ROOM:
 	case MESH_SCREEN:
 	case MESH_CAP:

@@ -162,6 +162,14 @@ struct game_state {
 
 	int debug;
 	int key_debug;
+
+	int round;
+	struct rock {
+		vec3 pos;
+		quaternion dir;
+		short vld;
+		short trg;
+	} rocks[20];
 };
 
 static float clamp(float v, float a, float b)
@@ -576,6 +584,14 @@ game_enter_state(struct game_state *game_state, int state)
 		vec3 pos = {    0.38,     2.59,    -1.51};
 		quaternion rot = {{   -0.00,    -0.13,     0.00}, 0.991398};
 		camera_set(&game_state->cam, pos, rot);
+		for (size_t i = 0; i < 4; i++) {
+		sampler_init(&game_state->woosh_sampler[i],
+			     game_state->woosh_wav[i]);
+		}
+		for (size_t i = 0; i < 4; i++) {
+			sampler_init(&game_state->crash_sampler[i],
+				     game_state->crash_wav[i]);
+		}
 	}
 		game_state->window_io->cursor(1); /* show */
 		break;
@@ -584,6 +600,11 @@ game_enter_state(struct game_state *game_state, int state)
 		game_state->player_aim = VEC3_ZERO;
 		game_state->player_pos = VEC3_ZERO;
 		game_state->player_dir = QUATERNION_IDENTITY;
+		game_state->round = 0;
+		for (int i = 0; i < 20; i++) {
+			game_state->rocks[i].vld = 0;
+			game_state->rocks[i].pos = VEC3_ZERO;
+		}
 		game_state->window_io->cursor(0); /* hide */
 		break;
 	default:
@@ -601,6 +622,7 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 	vec3 color_selected = {0.9,0.9,0.9};
 	vec3 cursor = { 0 };
 	int sel = game_state->menu_selection;
+	float time = input->time;
 	cursor.x = input->xpos / (double) input->width;
 	cursor.y = input->ypos / (double) input->height;
 	cursor.x = cursor.x * 2.0 - 1.0;
@@ -618,7 +640,7 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 
 	render_queue_push(rqueue, &(struct entity){
 			.type = ENTITY_GAME,
-			.shader = SHADER_WALL,
+			.shader = time > (15.0*60.0) ? SHADER_SCREEN : SHADER_WALL,
 			.mesh = MESH_ROOM,
 			.scale = {1,1,1},
 			.position = {0, 0, 0},
@@ -739,6 +761,7 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 	vec3 aim = game_state->player_aim;
 	vec3 aim_inc = { 0 };
 	float aim_spd = 0.1;
+	struct rock *rocks = game_state->rocks;
 
 	if (key_pressed(input, 'A') || key_pressed(input, KEY_LEFT)) {
 		aim_inc.x += dt * aim_spd;
@@ -783,6 +806,73 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 
 	/* render */	
 	render_scene(game_state, game_asset, &scene, rqueue);
+	for (int i = 0; i < 10; i++) {
+		if (rocks[i].vld) {
+		render_queue_push(rqueue, &(struct entity){
+				.type = 0,
+				.shader = SHADER_WALL,
+				.mesh = MESH_ROCK,
+				.scale = {3.1,3.1,3.1},
+				.position = rocks[i].pos,
+				.rotation = rocks[i].dir,
+			});
+		/* rock position -> player pos */
+		vec3 r2p = vec3_sub(pos, rocks[i].pos);
+		/* rock extent */
+		vec3 rdir = quaternion_rotate(rocks[i].dir, VEC3_AXIS_Y);
+		float lbda = vec3_dot(r2p, rdir);
+		vec3 dis = vec3_mult(lbda, rdir);
+		float d = vec3_norm(vec3_sub(r2p, dis));
+
+		if (lbda < 25 && d < 6) {
+			/* dead */
+			game_state->crash_sampler[0].trig_on = 1;
+			game_state->new_state = GAME_MENU;
+		} else if (lbda < 30 && d < 10) {
+			/* trigg sound */
+			if (rocks[i].trg == 0) {
+				size_t sampler_id = rand() % 4;
+				game_state->woosh_sampler[sampler_id].trig_on = 1;
+				rocks[i].trg = 1;
+			}
+		}
+
+		if (lbda < 25) {
+			/* in cylindre segment */
+			render_queue_push(rqueue, &(struct entity){
+				.type = ENTITY_DEBUG,
+				.shader = SHADER_SOLID,
+				.mesh = DEBUG_MESH_CROSS,
+				.scale = {5, 5, 5},
+				.position = vec3_add(rocks[i].pos, dis),
+				.rotation = QUATERNION_IDENTITY,
+				.color = {1,0,0},
+				.mode = GL_LINE,
+			});
+		}	
+		render_queue_push(rqueue, &(struct entity){
+				.type = ENTITY_DEBUG,
+				.shader = SHADER_SOLID,
+				.mesh = DEBUG_MESH_CYLINDER,
+				.scale = {4, 25, 4},
+				.position = rocks[i].pos,
+				.rotation = rocks[i].dir,
+				.color = {0,1,d < 4?1:0},
+				.mode = GL_LINE,
+			});
+		}
+		vec3 rpos = rocks[i + 10].pos;
+		rpos.y -= wallext * 10;
+		if (rocks[i + 10].vld)
+		render_queue_push(rqueue, &(struct entity){
+				.type = 0,
+				.shader = SHADER_WALL,
+				.mesh = MESH_ROCK,
+				.scale = {3.1,3.1,3.1},
+				.position = rpos,
+				.rotation = rocks[i + 10].dir,
+			});
+	}
 	render_queue_push(rqueue, &(struct entity){
 			.type = 0,
 			.shader = SHADER_WALL,
@@ -819,11 +909,28 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 		});
 
 	/* wrap position */
-	if (pos.y < 0)
+	if (pos.y < 0) {
+		int lvl = MIN(game_state->round, 10);
 		pos.y = wallext * 10;
+		game_state->round++;
+		for (int i = 1; i < lvl; i++) {
+			float rr = wall_radius + 5;
+			float a = 2 * M_PI * rand() / (float) RAND_MAX;
+			float x = rr * sin(a);
+			float z = rr * cos(a);
+			vec3 rpos = {x, wallext * i, z};
+			vec3 ldir = rpos;//{0, rpos.y, 0};
+			quaternion rdir = quaternion_look_at(ldir, VEC3_AXIS_Y);
+			rpos.y = wallext * i;
+			rocks[i] = rocks[i + 10];
+			rocks[i + 10].vld = 1;
+			rocks[i + 10].trg = 0;
+			rocks[i + 10].pos = rpos;
+			rocks[i + 10].dir = rdir;
+		}
+	}
 	game_state->player_pos = pos;
 	game_state->player_aim = aim;
-
 }
 
 void
@@ -884,23 +991,22 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 		if (game_state->state == GAME_PLAY) {
 			sample_l = step_sampler(&game_state->wind_sampler);
 			sample_r = step_sampler(&game_state->wind_sampler);
-		}
-		else {
-			sample_l = step_sampler(&game_state->theme_sampler);
-			sample_r = step_sampler(&game_state->theme_sampler);
-			sample_l += step_sampler(&game_state->casey_sampler);
-			sample_r += step_sampler(&game_state->casey_sampler);
-			sample_l += step_sampler(&game_state->menu_sampler);
-			sample_r += step_sampler(&game_state->menu_sampler);
 			for (size_t i = 0; i<4; i++) {
 				sample_l += step_sampler(&game_state->woosh_sampler[i]);
 				sample_r += step_sampler(&game_state->woosh_sampler[i]);
 				sample_l += step_sampler(&game_state->crash_sampler[i]);
 				sample_r += step_sampler(&game_state->crash_sampler[i]);
 			}
+		} else {
+			sample_l = step_sampler(&game_state->theme_sampler);
+			sample_r = step_sampler(&game_state->theme_sampler);
+			sample_l += step_sampler(&game_state->casey_sampler);
+			sample_r += step_sampler(&game_state->casey_sampler);
+			sample_l += step_sampler(&game_state->menu_sampler);
+			sample_r += step_sampler(&game_state->menu_sampler);
 		}
-			audio->buffer[i].r = sample_r;
-			audio->buffer[i].l = sample_l;
+		audio->buffer[i].r = sample_r;
+		audio->buffer[i].l = sample_l;
 	}
 
 	game_asset_poll(game_asset);
