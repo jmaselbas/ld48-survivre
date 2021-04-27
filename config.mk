@@ -12,9 +12,9 @@ MANPREFIX := $(PREFIX)/share/man
 
 ifeq ($(TARGET),w64)
 CROSS_COMPILE = x86_64-w64-mingw32-
-INCS := -Iglfw-3.3.2.bin.WIN64/include -Iglew/glew-2.2.0/include
-LIBS := -Lglfw-3.3.2.bin.WIN64/lib-mingw-w64 -Lglew/glew-2.2.0/lib/Release/x64
-LIBS += -lopengl32 -luser32 -lkernel32 -lgdi32 -lglu32 -lm -lglew32
+INCS := -Iglfw-3.3.2.bin.WIN64/include
+LIBS := -Lglfw-3.3.2.bin.WIN64/lib-mingw-w64
+LIBS += -lopengl32 -luser32 -lkernel32 -lgdi32 -lglu32 -lm
 LIBS += -lglfw3dll
 CFLAGS += -DGLFW_DLL -DWINDOWS
 # only static build is supported
@@ -58,8 +58,8 @@ PKG ?= PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config
 PKG ?= pkg-config
 
 # Depencies includes and libs
-INCS ?= $(shell $(PKG) --cflags glfw3 glew)
-LIBS ?= $(shell $(PKG) --libs glfw3 glew)
+INCS ?= $(shell $(PKG) --cflags glfw3)
+LIBS ?= $(shell $(PKG) --libs glfw3)
 LIBS += -lm
 
 ifeq ($(CONFIG_JACK),y)

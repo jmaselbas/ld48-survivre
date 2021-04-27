@@ -7,8 +7,13 @@
 #include <dlfcn.h>
 #endif
 
-#include <GL/glew.h>
+#ifdef WINDOWS /* WTF ? */
 #include <GLFW/glfw3.h>
+#include <glad.h>
+#else
+#include <glad.h>
+#include <GLFW/glfw3.h>
+#endif
 
 #include "engine/engine.h"
 #include "game/game.h"
@@ -334,9 +339,8 @@ main(int argc, char **argv)
 
 	glfw_init(argv[0]);
 
-	ret = glewInit();
-	if (ret != GLEW_OK)
-		die("GLEW init failed: %s\n", glewGetErrorString(ret));
+	if (!gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress))
+		die("GL init failed\n");
 
 	if (libgame.init)
 		libgame.init(&game_memory, &file_io, &glfw_io);

@@ -1,4 +1,5 @@
-plt-src-y += core.c audio.c
+CFLAGS += -Iplat/
+plt-src-y += core.c glad.c audio.c
 plt-src-$(CONFIG_JACK)  += jack.c
 plt-src-$(CONFIG_PULSE) += pulse.c
 plt-src-$(CONFIG_MINIAUDIO) += miniaudio.c miniaudio_imp.c

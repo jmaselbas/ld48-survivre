@@ -12,6 +12,10 @@
 
 #include <math.h>
 
+#define glPolygonMode(a,b)
+#define GL_LINE 0
+#define GL_FILL 1
+
 static float
 ray_distance_to_plane(vec3 org, vec3 dir, vec4 plane)
 {

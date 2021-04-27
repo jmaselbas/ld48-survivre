@@ -3,7 +3,8 @@
 
 #include <stddef.h>
 
-#include <GL/glew.h>
+#include <glad.h>
+
 #include <math.h>
 
 #include "util.h"

@@ -54,12 +54,14 @@ shader_reload(struct shader *s, const char *vert_src, const char *frag_src, cons
 			goto err_frag;
 	}
 
+#ifdef GL_GEOMETRY_SHADER
 	if (geom_src) {
 		geom_len = strlen(geom_src);
 		ret = shader_compile(1, &geom_src, &geom_len, GL_GEOMETRY_SHADER, &geom);
 		if (ret != GL_TRUE)
 			goto err_geom;
 	}
+#endif
 
 	/* Create a new program */
 	prog = glCreateProgram();
