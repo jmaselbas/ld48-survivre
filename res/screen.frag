@@ -21,8 +21,8 @@ vec3 sline(vec2 uv)
 	vec3 col = vec3(0);
 
 	uv.y += time * 0.1;
-	col = mix(bg, fg, fract(uv.y * 40));
-	col *= mix(0.5, 1, asin(time * 10));
+	col = mix(bg, fg, fract(uv.y * 40.0));
+	col *= mix(0.5, 1, asin(time * 10.0));
 	return col;
 }
 
@@ -94,20 +94,20 @@ void main(void) {
 
 	col = sline(uv);
 	uv.y += time * 0.1;
-	if (time < 5)
-	   	 col = vec3(0);
-	else if (time < 6)
+	if (time < 5.0)
+	   	 col = vec3(0.0);
+	else if (time < 6.0)
 	   	 col = vec3(1) * (time - 5.0) / 1.0;
-	else if (time < 30)
-		col = mix(vec3(1), col, uv.y*fract(1.7 * uv.y));
-	else if (time < 60)
-		col = mix(vec3(1), col, fract(2.7 * uv.y));
-	else if (time < 90) {
-		uv = fract(uv * 2);
-		col = col*mix(1, 0, uv.y*fract(uv.y * uv.y));
+	else if (time < 30.0)
+		col = mix(vec3(1.0), col, uv.y*fract(1.7 * uv.y));
+	else if (time < 60.0)
+		col = mix(vec3(1.0), col, fract(2.7 * uv.y));
+	else if (time < 90.0) {
+		uv = fract(uv * 2.0);
+		col = col*mix(1.0, 0.0, uv.y*fract(uv.y * uv.y));
 	} else {
 		col = shader();
 	}
 
-	out_color = vec4(col,0);
+	out_color = vec4(col,0.0);
 }

@@ -15,25 +15,6 @@ const vec3 sun = normalize(vec3(1, 0.75, 0));
 uniform vec3 camp;
 uniform float time;
 
-float idif(vec3 l, vec3 n)
-{
-	return clamp(dot(l, n), 0, 1);
-}
-
-float cooktorrance(vec3 v, vec3 l, vec3 n)
-{
-	vec3 h = normalize(l + v);
-	// lambertian falloff
-	float ndotL = dot(n, l);
-	// blinn falloff
-	float ndotH = dot(n, h);
-	// frensel falloff
-	float ndotV = dot(n, v);
-	// half vector falloff
-	float hdotV = dot(h, v);
-	return clamp(dot(h, n), 0, 1);
-}
-
 const float PI = 3.141592;
 const float Epsilon = 0.00001;
 
@@ -90,32 +71,6 @@ vec3 mbrdf(vec3 col, float metalness, float roughness, vec3 l, vec3 n, vec3 v)
 	vec3 diff = col * d * step(0.01, cosLi);
 	return (diff + spec) *  cosLi;
 }
-
-vec3 yuv2rgb(vec3 col)
-{
-	vec3 rgb;
-	float y = col.x;
-	float u = col.y;
-	float v = col.z;
-	rgb.r = y + 1.403 * v;
-	rgb.g = y - 0.344 * u - 0.714 * v;
-	rgb.b = y + 1.770 * u;
-	return rgb;
-}
-
-vec3 rgb2yuv(vec3 col)
-{
-	float y, u, v;
-
-	y = 0.299 * col.r + 0.587 * col.g + 0.114 * col.b;
-	u = (col.b - y) * 0.565;
-	v = (col.r - y) * 0.713;
-
-	return vec3(y, u, v);
-}
-float rand(vec2 co){
-	return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-}
 void main(void)
 {
 	vec2 uv = texcoord;
@@ -129,8 +84,8 @@ void main(void)
 	col = 0.5 * col + mbrdf(col, 0.1, rof, normalize(sun), normalize(normal), vdir);
 
 	vec3 v = normalize(camp - position);
-	float yy = 1-dot(normalize(vec3(0,1,0)), v);
-	float den = fogdensity * mix(0.01, 1, clamp(yy,0,1));
+	float yy = 1-dot(normalize(vec3(0.0,1.0,0.0)), v);
+	float den = fogdensity * mix(0.01, 1.0, clamp(yy,0.0,1.0));
 	float fog = exp(-den* z * z);
 	col = mix(fogcolor, col, clamp(fog, 0.0, 1.0));
 
