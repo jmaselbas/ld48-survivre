@@ -36,11 +36,12 @@ RES = res/audio/casey.ogg \
  res/solid.frag \
  res/screen.frag \
  res/wall.frag
+DLL = glew32.dll glfw3.dll
 
 # dynlib is the default target for now, not meant for release
 all: dynlib
 
-static: CFLAGS += -DSTATIC
+static: CFLAGS += -DSTATIC -ffunction-sections
 static: $(BIN);
 
 # dynlib build enable game code hot reloading
@@ -53,11 +54,20 @@ $(LIB): $(obj)
 $(BIN): main.o $(plt-obj) $(obj)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
+$(BIN).x86_64: FORCE
+	make clean
+	make static
+	mv $(BIN) $@
 
-"$(BIN)-$(VERSION)".tar.gz:  $(BIN) $(LIB) $(RES)
+$(BIN).exe: FORCE
+	make clean
+	make TARGET=w64 static
+FORCE:;
+.PHONY: FORCE
+
+"$(BIN)-$(VERSION)".tar.gz:  $(BIN).exe $(BIN).x86_64 $(DLL) $(RES)
 	mkdir -p $(BIN)-$(VERSION)
-	for i in $(RES); do mkdir -p "$(BIN)-$(VERSION)"/$$(dirname $$i)/ && cp $$i "$(BIN)-$(VERSION)"/$$(dirname $$i)/; done
-	cp $(BIN) "$(BIN)-$(VERSION)"
+	for i in $^; do mkdir -p "$(BIN)-$(VERSION)"/$$(dirname $$i)/ && cp $$i "$(BIN)-$(VERSION)"/$$(dirname $$i)/; done
 	tar zcf $@ "$(BIN)-$(VERSION)"
 
 dist: "$(BIN)-$(VERSION)".tar.gz

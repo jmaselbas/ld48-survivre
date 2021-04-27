@@ -28,10 +28,12 @@ LDFLAGS += -m32
 LIBDIR = .
 LIBNAME = libgame.so
 LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
+LDFLAGS += -l:libGLEW.a
 else ifeq ($(TARGET),)
 LIBDIR = .
 LIBNAME = libgame.so
 LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
+LDFLAGS += -l:libGLEW.a
 endif
 
 ifneq ($(CROSS_COMPILE),)
@@ -47,7 +49,9 @@ STRIP   = $(CROSS_COMPILE)strip
 endif
 
 ifeq ($(CC),emcc)
-LDFLAGS += -s USE_GLFW=3 -s WASM=0 -s MIN_WEBGL_VERSION=2 -s FULL_ES3=1
+LDFLAGS += -s USE_GLFW=3 -s WASM=1 -s MIN_WEBGL_VERSION=2 -s FULL_ES3=1 -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1
+LDFLAGS += $(foreach r,$(RES),--preload-file $(r))
+BIN = survivre.html
 PKG = emconfigure pkg-config
 endif
 
@@ -77,8 +81,8 @@ CFLAGS += -DCONFIG_MINIAUDIO
 endif
 
 # Flags
-CFLAGS += -std=c99 -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L
-CFLAGS += -O2 -W -fPIC -g -Wall
+CFLAGS +=  -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L
+#CFLAGS += -O2 -W -fPIC -g -Wall
+CFLAGS += -O3 -W -fPIC -Wall -s
 CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
-
 LDFLAGS += $(LIBS)
