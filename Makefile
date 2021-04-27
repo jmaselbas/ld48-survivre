@@ -70,12 +70,12 @@ $(BIN).exe: FORCE
 FORCE:;
 .PHONY: FORCE
 
-"$(BIN)-$(VERSION)".tar.gz:  $(BIN).exe $(BIN).x86_64 $(DLL) $(RES)
+"$(BIN)-$(VERSION)".zip: $(BIN).exe $(BIN).x86 $(BIN).x86_64 $(DLL) $(RES)
 	mkdir -p $(BIN)-$(VERSION)
 	for i in $^; do mkdir -p "$(BIN)-$(VERSION)"/$$(dirname $$i)/ && cp $$i "$(BIN)-$(VERSION)"/$$(dirname $$i)/; done
-	tar zcf $@ "$(BIN)-$(VERSION)"
+	zip -r $@ "$(BIN)-$(VERSION)"
 
-dist: "$(BIN)-$(VERSION)".tar.gz
+dist: "$(BIN)-$(VERSION)".zip
 
 dist-clean:
 	rm -rf $(BIN)-$(VERSION)
