@@ -6,10 +6,6 @@
 #include <fcntl.h>
 #include "core.h"
 
-#ifndef WINDOWS
-__asm__(".symver fstat,fstat@GLIBC_2.2.5");
-#endif
-
 void *
 xvmalloc(void *base, size_t align, size_t size)
 {
