@@ -1,4 +1,7 @@
-#version 410 core
+#version 300 es
+precision highp float;
+precision highp int;
+
 in vec3 normal;
 in vec2 texcoord;
 out vec4 out_color;

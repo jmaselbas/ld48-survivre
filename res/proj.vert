@@ -1,4 +1,4 @@
-#version 410 core
+#version 300 es
 
 in vec3 in_pos;
 in vec3 in_normal;

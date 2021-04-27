@@ -1,4 +1,6 @@
-#version 410 core
+#version 300 es
+precision highp float;
+precision highp int;
 
 in vec3 normal;
 in vec3 position;
@@ -62,7 +64,7 @@ vec3 mbrdf(vec3 col, float metalness, float roughness, vec3 l, vec3 n, vec3 v)
 	/* normal distribution */
 	float d = ndfGGX(cosLh, roughness);
 	/* geometric attenuation */
-	float g = max(0, gaSchlickGGX(cosLi, cosLo, roughness));
+	float g = max(0.0, gaSchlickGGX(cosLi, cosLo, roughness));
 
 	float f0 = mix(0.1, 1.0 - f,  metalness);
 	float spec = (f0 * d * g) / max(Epsilon, 4.0 * cosLi * cosLo);
@@ -84,7 +86,7 @@ void main(void)
 	col = 0.5 * col + mbrdf(col, 0.1, rof, normalize(sun), normalize(normal), vdir);
 
 	vec3 v = normalize(camp - position);
-	float yy = 1-dot(normalize(vec3(0.0,1.0,0.0)), v);
+	float yy = 1.0 - dot(normalize(vec3(0.0,1.0,0.0)), v);
 	float den = fogdensity * mix(0.01, 1.0, clamp(yy,0.0,1.0));
 	float fog = exp(-den* z * z);
 	col = mix(fogcolor, col, clamp(fog, 0.0, 1.0));

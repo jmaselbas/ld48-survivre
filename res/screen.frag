@@ -1,4 +1,6 @@
-#version 400
+#version 300 es
+precision highp float;
+precision highp int;
 
 in vec2 texcoord;
 
@@ -7,12 +9,12 @@ uniform float time;
 out vec4 out_color;
 
 #define PI 3.1416
-#define PI2 (PI*2)
+#define PI2 (PI*2.0)
 
 const vec3 bg = vec3(0.2, 0.2, 0.2);
 const vec3 fg = vec3(0.4, 0.4, 0.4);
 
-float asin(float f) { return 0.5 + 0.5 * sin(f); }
+float abssin(float f) { return 0.5 + 0.5 * sin(f); }
 
 mat2 rot2(float a) { return mat2(cos(a), -sin(a), sin(a), cos(a)); }
 
@@ -22,7 +24,7 @@ vec3 sline(vec2 uv)
 
 	uv.y += time * 0.1;
 	col = mix(bg, fg, fract(uv.y * 40.0));
-	col *= mix(0.5, 1, asin(time * 10.0));
+	col *= mix(0.5, 1.0, abssin(time * 10.0));
 	return col;
 }
 
@@ -36,18 +38,17 @@ float ht(vec2 uv, float a, float v)
 
 vec3 shader(void)
 {
-        vec2 UV = texcoord;
 	vec3 col = vec3(0);
-	vec2 uv = UV;
+	vec2 uv = texcoord;
 	vec2 sc = uv;
 	vec2 pv = uv;
 	vec2 tv = uv;
-	vec2 cv=  uv;
+	vec2 cv = uv;
 	vec2 dv = uv;
 	float circle = length(cv) - time;
 	float dist_2 = 1.5 * sin(time / 100.0) * tan(time * 0.5);
 	for (float i = 0.0; i < 10.0; i++) {
-		float a = PI2 * (i/10.0);
+		float a = PI2 * (i / 10.0);
 		cv.x += dist_2 * sin(time + a);
 		cv.y += dist_2 * cos(time + a);
 		circle = min(circle, length(cv) - time);
@@ -82,7 +83,7 @@ vec3 shader(void)
 	off.x += dist * sin(time / 10.0);
 	off.y += dist * cos(time / 10.0);
 
-        if (ht(sc+off, 0.0, length(sc) + mix(0.0, 0.5, 0)) > 0.5)
+        if (ht(sc + off, 0.0, length(sc)) > 0.5)
 		col = 1.0 - col;
 
         return col;
@@ -90,7 +91,7 @@ vec3 shader(void)
 
 void main(void) {
 	vec2 uv = texcoord;
-	vec3 col = vec3(0);
+	vec3 col = vec3(0.0);
 
 	col = sline(uv);
 	uv.y += time * 0.1;
