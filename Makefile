@@ -11,6 +11,31 @@ obj = $(src:.c=.o)
 plt-obj = $(plt-src:.c=.o)
 BIN = survivre
 LIB = $(LIBDIR)/$(LIBNAME)
+RES = res/audio/casey.ogg \
+ res/audio/fx_bip_01.wav \
+ res/audio/fx_crash_01.wav \
+ res/audio/fx_crash_02.wav \
+ res/audio/fx_crash_03.wav \
+ res/audio/fx_crash_04.wav \
+ res/audio/fx_wind_loop.ogg \
+ res/audio/fx_woosh_01.wav \
+ res/audio/fx_woosh_02.wav \
+ res/audio/fx_woosh_03.wav \
+ res/audio/fx_woosh_04.wav \
+ res/audio/LD48_loop_fade.ogg \
+ res/cap.obj \
+ res/menu_quit.obj \
+ res/menu_start.obj \
+ res/player.obj \
+ res/rock.obj \
+ res/room.obj \
+ res/screen.obj \
+ res/wall.obj \
+ res/orth.vert \
+ res/proj.vert \
+ res/solid.frag \
+ res/screen.frag \
+ res/wall.frag
 
 # dynlib is the default target for now, not meant for release
 all: dynlib
@@ -28,10 +53,22 @@ $(LIB): $(obj)
 $(BIN): main.o $(plt-obj) $(obj)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
+
+"$(BIN)-$(VERSION)".tar.gz:  $(BIN) $(LIB) $(RES)
+	mkdir -p $(BIN)-$(VERSION)
+	for i in $(RES); do mkdir -p "$(BIN)-$(VERSION)"/$$(dirname $$i)/ && cp $$i "$(BIN)-$(VERSION)"/$$(dirname $$i)/; done
+	cp $(BIN) "$(BIN)-$(VERSION)"
+	tar zcf $@ "$(BIN)-$(VERSION)"
+
+dist: "$(BIN)-$(VERSION)".tar.gz
+
+dist-clean:
+	rm -rf $(BIN)-$(VERSION)
+
 clean:
 	rm -f $(BIN) main.o $(obj) $(dep) $(plt-obj)
 
-.PHONY: all static dynlib clean
+.PHONY: all static dynlib clean dist dist-clean
 
 # namesubst perform a patsubst only on the file name, while keeping the path intact
 # usage: $(call namesubst,pattern,replacement,text)
