@@ -70,6 +70,9 @@ CFLAGS += -DCONFIG_PULSE
 endif
 ifeq ($(CONFIG_MINIAUDIO),y)
 LIBS += -lpthread
+ifneq ($(TARGET),w64)
+LIBS += -ldl
+endif
 CFLAGS += -DCONFIG_MINIAUDIO
 endif
 

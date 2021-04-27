@@ -7,9 +7,8 @@
 
 static ma_device device;
 
-static pthread_mutex_t mutex;
-static pthread_cond_t cond;
 static volatile int quit;
+static ma_event cond;
 
 static struct audio_state *audio_state;
 
@@ -35,7 +34,7 @@ miniaudio_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uin
 			frameCount -= count;
 		} else {
 			/* no more audio to write */
-			pthread_cond_wait(&cond, &mutex);
+			ma_event_wait(&cond);
 		}
 	}
 
@@ -59,11 +58,8 @@ miniaudio_init(struct audio_state *audio)
 		die("Failed to initialize miniaudio\n");
         }
 
-	if (pthread_mutex_init(&mutex, NULL) != 0)
-		die("pthread_mutex_init() error");
-
-	if (pthread_cond_init(&cond, NULL) != 0)
-		die("pthread_cond_init() error");
+	if (ma_event_init(&cond) != MA_SUCCESS)
+		die("ma_event_init() error");
 	quit = 0;
 
         ma_device_start(&device);
@@ -74,8 +70,7 @@ miniaudio_fini(struct audio_state *audio)
 {
 	UNUSED(audio);
 	quit = 1;
-	pthread_cond_signal(&cond);
-	ma_device_uninit(&device);
+	ma_event_uninit(&cond);
 }
 
 static void
@@ -83,7 +78,7 @@ miniaudio_step(struct audio_state *audio)
 {
 	UNUSED(audio);
 	/* signal audio thread */
-	pthread_cond_signal(&cond);	
+	ma_event_signal(&cond);
 }
 
 struct audio_io *miniaudio_io = &(struct audio_io) {
