@@ -79,9 +79,9 @@ vec3 shader(void)
 	else
 		col.rgb = 1.0 - col.rrr;
 
-        vec2 off;
-	off.x += dist * sin(time / 10.0);
-	off.y += dist * cos(time / 10.0);
+	vec2 off = vec2(0.0);
+	off.x = dist * sin(time / 10.0);
+	off.y = dist * cos(time / 10.0);
 
         if (ht(sc + off, 0.0, length(sc)) > 0.5)
 		col = 1.0 - col;
