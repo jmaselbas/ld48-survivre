@@ -49,9 +49,11 @@ dynlib: LDFLAGS += -ldl
 dynlib: $(LIB) $(BIN);
 
 $(LIB): $(obj)
+	@mkdir -p $(dir $@)
 	$(CC) -shared $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 $(BIN): main.o $(plt-obj) $(obj)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 $(BIN).x86_64: FORCE
