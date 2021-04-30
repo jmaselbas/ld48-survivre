@@ -415,6 +415,12 @@ main_loop_step(void)
 	window_swap_buffers();
 }
 
+#ifdef __EMSCRIPTEN__
+void emscripten_set_main_loop(void (* f)(), int, int);
+#define main_loop_step() \
+	{ emscripten_set_main_loop(main_loop_step, 0, 10); return 0; } while (0)
+#endif
+
 int
 main(int argc, char **argv)
 {

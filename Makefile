@@ -9,7 +9,7 @@ include plat/Makefile
 
 obj = $(src:.c=.o)
 plt-obj = $(plt-src:.c=.o)
-BIN = survivre
+BIN ?= survivre
 LIB = $(LIBDIR)/$(LIBNAME)
 RES = res/audio/casey.ogg \
  res/audio/fx_bip_01.wav \

@@ -48,7 +48,9 @@ STRIP   = $(CROSS_COMPILE)strip
 endif
 
 ifeq ($(CC),emcc)
-LDFLAGS += -s USE_GLFW=3 -s WASM=1 -s MIN_WEBGL_VERSION=2 -s FULL_ES3=1 -s ASSERTIONS=1 -s ALLOW_MEMORY_GROWTH=1
+CFLAGS += -s USE_SDL=2
+LDFLAGS += -s USE_SDL=2 -s USE_WEBGL2=1 -s FULL_ES3=1
+LDFLAGS += -s ASSERTIONS=1 -s TOTAL_MEMORY=$$(( 8 * 64 * 1024 * 1024 ))
 LDFLAGS += $(foreach r,$(RES),--preload-file $(r))
 BIN = survivre.html
 PKG = emconfigure pkg-config
