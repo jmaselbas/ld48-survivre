@@ -764,7 +764,7 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 	vec3 inc = vec3_mult(dt, spd);
 	vec3 aim = game_state->player_aim;
 	vec3 aim_inc = { 0 };
-	float aim_spd = 0.1;
+	float aim_spd = 6;
 	struct rock *rocks = game_state->rocks;
 
 	if (key_pressed(input, 'A') || key_pressed(input, KEY_LEFT)) {
@@ -782,7 +782,7 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 	if (aim_inc.x != 0 || aim_inc.z != 0)
 		aim_inc = vec3_normalize(aim_inc);
 	aim = vec3_mult(0.9, aim);
-	aim = vec3_add(aim, vec3_mult(aim_spd, aim_inc));
+	aim = vec3_add(aim, vec3_mult(dt * aim_spd, aim_inc));
 	aim.y = 0;
 
 	pos = vec3_add(pos, vec3_mult(game_state->player_speed, aim));
