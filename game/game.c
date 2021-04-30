@@ -991,6 +991,7 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 
 	/* audio */
 	float sample_l, sample_r;
+	float volume = 0.2;
 	for (int i = 0; i < audio->size; i++) {
 		if (game_state->state == GAME_PLAY) {
 			sample_l = step_sampler(&game_state->wind_sampler);
@@ -1009,8 +1010,8 @@ game_step(struct game_memory *memory, struct game_input *input, struct game_audi
 			sample_l += step_sampler(&game_state->menu_sampler);
 			sample_r += step_sampler(&game_state->menu_sampler);
 		}
-		audio->buffer[i].r = sample_r;
-		audio->buffer[i].l = sample_l;
+		audio->buffer[i].r = volume * sample_r;
+		audio->buffer[i].l = volume * sample_l;
 	}
 
 	game_asset_poll(game_asset);
