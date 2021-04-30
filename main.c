@@ -145,8 +145,10 @@ static void
 mouse_callback(GLFWwindow* window, int button, int action, int mods)
 {
 	struct game_input *input = &game_input_next;
+	UNUSED(window);
+	UNUSED(mods);
 
-	if (button >= 0 && button < ARRAY_LEN(input->buttons))
+	if (button >= 0 && button < (int)ARRAY_LEN(input->buttons))
 		input->buttons[button] = action;
 }
 
@@ -322,7 +324,6 @@ main(int argc, char **argv)
 		.step = game_step,
 		.fini = game_fini,
 	};
-	int ret;
 
 	if (argc == 2 && strcmp(argv[1], "-v") == 0) {
 		printf("version %s\n", VERSION);
