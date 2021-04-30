@@ -23,6 +23,12 @@ extern game_fini_t game_fini;
 #endif
 
 static double
+window_get_time(void)
+{
+	return glfwGetTime();
+}
+
+static double
 rate_limit(double rate)
 {
 	static double tlast;
@@ -31,14 +37,14 @@ rate_limit(double rate)
 	double period = 1 / (double) rate;
 
 	tnext = tlast + period;
-	tcurr = glfwGetTime() + 0.0001; /* plus some time for the overhead */
+	tcurr = window_get_time() + 0.0001; /* plus some time for the overhead */
 	if (tcurr < tnext) {
 		ts.tv_sec = 0;
 		ts.tv_nsec = 1000000000 * (tnext - tcurr);
 		nanosleep(&ts, NULL);
 	}
 	/* get current frame rate */
-	tcurr = glfwGetTime();
+	tcurr = window_get_time();
 	rate = 1.0 / (double) (tcurr - tlast);
 	tlast = tcurr;
 	return rate;
@@ -106,7 +112,7 @@ swap_input(struct game_input *new, struct game_input *buf)
 	/* copy buffered input into the new input buffer */
 	*new = *buf;
 	/* grab time */
-	new->time = glfwGetTime();
+	new->time = window_get_time();
 	/* update window's framebuffer size */
 	new->width = width;
 	new->height = height;
@@ -183,7 +189,7 @@ key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
 }
 
 static void
-glfw_init(char *app_name)
+window_init(char *app_name)
 {
 	GLFWmonitor *monitor;
 	const GLFWvidmode *mode;
@@ -243,10 +249,28 @@ glfw_init(char *app_name)
 }
 
 static void
-glfw_fini(void)
+window_fini(void)
 {
 	glfwDestroyWindow(window);
 	glfwTerminate();
+}
+
+static int
+window_should_close(void)
+{
+	return glfwWindowShouldClose(window);
+}
+
+static void
+window_swap_buffers(void)
+{
+	glfwSwapBuffers(window);
+}
+
+static void
+window_poll_events(void)
+{
+	glfwPollEvents();
 }
 
 static void
@@ -316,15 +340,35 @@ alloc_game_memory(struct game_memory *memory)
 	memory->audio = alloc_memory_zone(NULL, SZ_4M, SZ_16M);
 }
 
+struct libgame libgame = {
+	.init = game_init,
+	.step = game_step,
+	.fini = game_fini,
+};
+
+static void
+main_loop_step(void)
+{
+	window_poll_events();
+
+	/* get an audio buffer */
+	game_audio.size   = ring_buffer_write_size(&audio_state.buffer);
+	game_audio.buffer = ring_buffer_write_addr(&audio_state.buffer);
+
+	swap_input(&game_input, &game_input_next);
+	if (libgame.step)
+		libgame.step(&game_memory, &game_input, &game_audio);
+
+	/* finalize audio write */
+	ring_buffer_write_done(&audio_state.buffer, game_audio.size);
+	audio_step(&audio_state);
+
+	window_swap_buffers();
+}
+
 int
 main(int argc, char **argv)
 {
-	struct libgame libgame = {
-		.init = game_init,
-		.step = game_step,
-		.fini = game_fini,
-	};
-
 	if (argc == 2 && strcmp(argv[1], "-v") == 0) {
 		printf("version %s\n", VERSION);
 		return 0;
@@ -334,7 +378,7 @@ main(int argc, char **argv)
 
 	libgame_reload(&libgame);
 
-	glfw_init(argv[0]);
+	window_init(argv[0]);
 
 	if (!gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress))
 		die("GL init failed\n");
@@ -345,32 +389,17 @@ main(int argc, char **argv)
 	audio_state = audio_create(audio_config);
 	audio_init(&audio_state);
 
-	while (!glfwWindowShouldClose(window)) {
+	while (!window_should_close()) {
 		if (libgame_changed(&libgame))
 			libgame_reload(&libgame);
-
-		glfwPollEvents();
-
-		/* get an audio buffer */
-		game_audio.size   = ring_buffer_write_size(&audio_state.buffer);
-		game_audio.buffer = ring_buffer_write_addr(&audio_state.buffer);
-
-		swap_input(&game_input, &game_input_next);
-		if (libgame.step)
-			libgame.step(&game_memory, &game_input, &game_audio);
-
-		/* finalize audio write */
-		ring_buffer_write_done(&audio_state.buffer, game_audio.size);
-		audio_step(&audio_state);
-
-		glfwSwapBuffers(window);
+		main_loop_step();
 		rate_limit(300);
 	}
 
 	if (libgame.fini)
 		libgame.fini(&game_memory);
 
-	glfw_fini();
+	window_fini();
 
 	audio_fini(&audio_state);
 
