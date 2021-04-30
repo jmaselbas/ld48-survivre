@@ -85,4 +85,4 @@ ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
 CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
-LDFLAGS += $(LIBS)
+LDFLAGS += $(LIBS) -rdynamic
