@@ -261,7 +261,7 @@ libgame_reload(struct libgame *libgame)
 	if (libgame->handle) {
 		ret = dlclose(libgame->handle);
 		if (ret)
-			fprintf(stderr, "dlcose failed\n");
+			fprintf(stderr, "dlclose failed\n");
 	}
 
 	time = file_time("libgame.so");
