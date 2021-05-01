@@ -58,8 +58,8 @@ PKG ?= PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config
 PKG ?= pkg-config
 
 # Depencies includes and libs
-INCS ?= $(shell $(PKG) --cflags glfw3)
-LIBS ?= $(shell $(PKG) --libs glfw3)
+INCS ?= $(shell $(PKG) --cflags sdl2)
+LIBS ?= $(shell $(PKG) --libs sdl2)
 LIBS += -lm
 
 ifeq ($(CONFIG_JACK),y)

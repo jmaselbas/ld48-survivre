@@ -8,8 +8,7 @@
 #endif
 
 #include <glad.h>
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
+#include <SDL.h>
 
 #include "engine/engine.h"
 #include "game/game.h"
@@ -22,10 +21,11 @@ extern game_step_t game_step;
 extern game_fini_t game_fini;
 #endif
 
+#define MSEC_PER_SEC 1000
 static double
 window_get_time(void)
 {
-	return glfwGetTime();
+	return SDL_GetTicks() / (double) MSEC_PER_SEC;
 }
 
 static double
@@ -56,9 +56,11 @@ struct file_io file_io = {
 	.time = file_time,
 };
 
-GLFWwindow *window;
+SDL_Window *window;
+SDL_GLContext context;
 unsigned int width = 1080;
 unsigned int height = 800;
+int should_close;
 int focused;
 int show_cursor;
 static int xpre, ypre;
@@ -87,15 +89,14 @@ struct libgame {
 static void
 request_close(void)
 {
-	glfwSetWindowShouldClose(window, GLFW_TRUE);
+	should_close = 1;
 }
 
 static void
 request_cursor(int show)
 {
-	show_cursor = show ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED;
-
-	glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
+	show_cursor = show;
+	SDL_SetRelativeMouseMode(show_cursor ? SDL_FALSE : SDL_TRUE);
 }
 
 struct window_io glfw_io = {
@@ -123,154 +124,202 @@ swap_input(struct game_input *new, struct game_input *buf)
 }
 
 static void
-framebuffer_callback(GLFWwindow *window, int w, int h)
+window_init(char *name)
 {
-	UNUSED(window);
+	if (SDL_InitSubSystem(SDL_INIT_VIDEO))
+		die("SDL init failed: %s\n", SDL_GetError());
 
-	width = w;
-	height = h;
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, SDL_TRUE);
+	SDL_GL_SetSwapInterval(1);
+
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+
+	window = SDL_CreateWindow(name, SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+				  width, height,
+				  SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
+				  | SDL_WINDOW_INPUT_FOCUS
+				  | SDL_WINDOW_MOUSE_FOCUS
+				  | SDL_WINDOW_MAXIMIZED
+				  );
+
+	if (!window)
+		die("Failed to create window: %s\n", SDL_GetError());
+
+	context = SDL_GL_CreateContext(window);
+	if (!context)
+		die("Failed to create openGL context: %s\n", SDL_GetError());
+
+	show_cursor = 1;
+	SDL_SetRelativeMouseMode(show_cursor ? SDL_FALSE : SDL_TRUE);
+
+	if (!gladLoadGLES2Loader((GLADloadproc) SDL_GL_GetProcAddress))
+		die("GL init failed\n");
+
+	glViewport(0, 0, width, height);
 }
 
 static void
-cursor_position_callback(GLFWwindow *window, double xpos, double ypos)
+window_fini(void)
+{
+	SDL_GL_DeleteContext(context);
+	SDL_DestroyWindow(window);
+	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+}
+
+static int
+window_should_close(void)
+{
+	return should_close;
+}
+
+static void
+window_swap_buffers(void)
+{
+	SDL_GL_SwapWindow(window);
+}
+
+static void
+focus_event(int focus)
+{
+	focused = focus;
+	if (focused) {
+		SDL_SetRelativeMouseMode(show_cursor ? SDL_FALSE : SDL_TRUE);
+	} else {
+		SDL_SetRelativeMouseMode(SDL_FALSE);
+	}
+}
+
+static void
+mouse_motion_event(int xpos, int ypos, int xinc, int yinc)
 {
 	struct game_input *input = &game_input_next;
-	UNUSED(window);
 
 	if (focused) {
 		input->xpos = xpos;
 		input->ypos = ypos;
-		input->xinc += xpos - xpre;
-		input->yinc += ypos - ypre;
+		input->xinc += xinc;
+		input->yinc += yinc;
 	}
 	xpre = xpos;
 	ypre = ypos;
 }
 
 static void
-mouse_callback(GLFWwindow* window, int button, int action, int mods)
+mouse_button_event(int button, int act)
 {
 	struct game_input *input = &game_input_next;
-	UNUSED(window);
-	UNUSED(mods);
 
 	if (button >= 0 && button < (int)ARRAY_LEN(input->buttons))
-		input->buttons[button] = action;
+		input->buttons[button] = act;
 }
 
 static void
-focus_callback(GLFWwindow *window, int focus)
-{
-	focused = focus;
-	if (focused)
-		glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
-	else
-		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-}
-
-static void
-key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+key_event(int key, int mod, int act)
 {
 	struct game_input *input = &game_input_next;
-	UNUSED(window);
-	UNUSED(scancode);
-	UNUSED(mods);
 
-	if (key == GLFW_KEY_BACKSPACE)
-		if ((mods & (GLFW_MOD_ALT | GLFW_MOD_CONTROL))
-			==  (GLFW_MOD_ALT | GLFW_MOD_CONTROL))
-			glfwSetWindowShouldClose(window, GLFW_TRUE);
-
-	if (action == GLFW_REPEAT)
-		return;
-
-	if ((unsigned int)key < ARRAY_LEN(input->keys))
-		input->keys[key] = action;
-}
-
-static void
-window_init(char *app_name)
-{
-	GLFWmonitor *monitor;
-	const GLFWvidmode *mode;
-	int w, h;
-
-	if (!glfwInit())
-		die("GLFW init failed\n");
-
-	glfwWindowHint(GLFW_RED_BITS, 8);
-	glfwWindowHint(GLFW_GREEN_BITS, 8);
-	glfwWindowHint(GLFW_BLUE_BITS, 8);
-	glfwWindowHint(GLFW_ALPHA_BITS, 8);
-	glfwWindowHint(GLFW_DEPTH_BITS, 24);
-	glfwWindowHint(GLFW_STENCIL_BITS, 8);
-
-	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-	glfwWindowHint(GLFW_REFRESH_RATE, 60);
-	glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
-
-	/* Try to grab better default width and height */
-	monitor = glfwGetPrimaryMonitor();
-	if (monitor) {
-		mode = glfwGetVideoMode(monitor);
-		if (mode) {
-			width = mode->width;
-			height = mode->height;
-		}
+	if (key == KEY_BACKSPACE) {
+		/* TODO: fix key mod */ 
+		if ((mod & (KMOD_ALT | KMOD_CTRL))
+			== (KMOD_ALT | KMOD_CTRL))
+			should_close = 1;
 	}
 
-	window = glfwCreateWindow(width, height, app_name, NULL, NULL);
-	if (!window)
-		die("create window failed\n");
-
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(1);
-
-	glfwGetFramebufferSize(window, &w, &h);
-	width  = (w < 0) ? 0 : w;
-	height = (h < 0) ? 0 : h;
-	glfwSetFramebufferSizeCallback(window, framebuffer_callback);
-
-	glfwSetWindowFocusCallback(window, focus_callback);
-	glfwSetMouseButtonCallback(window, mouse_callback);
-	glfwSetCursorPosCallback(window, cursor_position_callback);
-	glfwGetCursorPos(window, &xpre, &ypre);
-
-	glfwSetKeyCallback(window, key_callback);
-	show_cursor = GLFW_CURSOR_DISABLED;
-	glfwSetInputMode(window, GLFW_CURSOR, show_cursor);
-}
-
-static void
-window_fini(void)
-{
-	glfwDestroyWindow(window);
-	glfwTerminate();
+	if ((unsigned int)key < ARRAY_LEN(input->keys))
+		input->keys[key] = act;
 }
 
 static int
-window_should_close(void)
+map_key(SDL_Keycode sym)
 {
-	return glfwWindowShouldClose(window);
-}
-
-static void
-window_swap_buffers(void)
-{
-	glfwSwapBuffers(window);
+	switch (sym) {
+	case SDLK_UNKNOWN:
+	default: return 0;
+	case SDLK_RETURN: return KEY_ENTER;
+	case SDLK_ESCAPE: return KEY_ESCAPE;
+	case SDLK_BACKSPACE: return KEY_BACKSPACE;
+	case SDLK_TAB: return KEY_TAB;
+	case SDLK_SPACE: return KEY_SPACE;
+	case SDLK_a: return KEY_A;
+	case SDLK_b: return KEY_B;
+	case SDLK_c: return KEY_C;
+	case SDLK_d: return KEY_D;
+	case SDLK_e: return KEY_E;
+	case SDLK_f: return KEY_F;
+	case SDLK_g: return KEY_G;
+	case SDLK_h: return KEY_H;
+	case SDLK_i: return KEY_I;
+	case SDLK_j: return KEY_J;
+	case SDLK_k: return KEY_K;
+	case SDLK_l: return KEY_L;
+	case SDLK_m: return KEY_M;
+	case SDLK_n: return KEY_N;
+	case SDLK_o: return KEY_O;
+	case SDLK_p: return KEY_P;
+	case SDLK_q: return KEY_Q;
+	case SDLK_r: return KEY_R;
+	case SDLK_s: return KEY_S;
+	case SDLK_t: return KEY_T;
+	case SDLK_u: return KEY_U;
+	case SDLK_v: return KEY_V;
+	case SDLK_w: return KEY_W;
+	case SDLK_x: return KEY_X;
+	case SDLK_y: return KEY_Y;
+	case SDLK_z: return KEY_Z;
+	case SDLK_RIGHT: return KEY_RIGHT;
+	case SDLK_LEFT:  return KEY_LEFT;
+	case SDLK_DOWN:  return KEY_DOWN;
+	case SDLK_UP:    return KEY_UP;
+	}
 }
 
 static void
 window_poll_events(void)
 {
-	glfwPollEvents();
+	SDL_Event e;
+	int key, mod, act;
+	int w, h;
+
+	SDL_GL_GetDrawableSize(window, &w, &h);
+	width  = (w < 0) ? 0 : (int) w;
+	height = (h < 0) ? 0 : (int) h;
+
+	while (SDL_PollEvent(&e)) {
+		switch(e.type) {
+		case SDL_QUIT:
+			should_close = 1;
+			break;
+		case SDL_KEYDOWN:
+		case SDL_KEYUP:
+			key = map_key(e.key.keysym.sym);
+			mod = e.key.keysym.mod;
+			act = e.key.state == SDL_PRESSED ? KEY_PRESSED : KEY_RELEASED;
+			key_event(key, mod, act);
+			break;
+		case SDL_MOUSEMOTION:
+			mouse_motion_event(e.motion.x, e.motion.y, e.motion.xrel, e.motion.yrel);
+			break;
+		case SDL_MOUSEBUTTONDOWN:
+		case SDL_MOUSEBUTTONUP:
+			act = e.button.state == SDL_PRESSED ? KEY_PRESSED : KEY_RELEASED;
+			mouse_button_event(e.button.button - 1, act);
+			break;
+		case SDL_WINDOWEVENT:
+			if (e.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+				focus_event(1);
+			else if (e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
+				focus_event(0);
+			break;
+		}
+	}
 }
 
 struct libgame libgame = {
@@ -379,9 +428,6 @@ main(int argc, char **argv)
 	libgame_reload();
 
 	window_init(argv[0]);
-
-	if (!gladLoadGLES2Loader((GLADloadproc) glfwGetProcAddress))
-		die("GL init failed\n");
 
 	if (libgame.init)
 		libgame.init(&game_memory, &file_io, &glfw_io);
