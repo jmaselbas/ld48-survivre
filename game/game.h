@@ -1,8 +1,8 @@
 #ifndef GAME_H
 #define GAME_H
 #include <time.h>
-typedef ssize_t (file_size_t)(const char *path);
-typedef ssize_t (file_read_t)(const char *path, void *buf, size_t size);
+typedef int64_t (file_size_t)(const char *path);
+typedef int64_t (file_read_t)(const char *path, void *buf, size_t size);
 typedef time_t (file_time_t)(const char *path);
 
 struct file_io {

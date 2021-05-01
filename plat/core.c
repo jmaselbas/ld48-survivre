@@ -20,29 +20,38 @@ xvmalloc(void *base, size_t align, size_t size)
 	return addr;
 }
 
-ssize_t
+int64_t
 file_size(const char *path)
 {
-	struct stat sb;
-	if (stat(path, &sb) == 0)
-		return sb.st_size;
-	return -1;
+	int64_t size;
+	FILE *f;
+
+	f = fopen(path, "r");
+	if (f == NULL) {
+		size = -1;
+	} else {
+		fseek(f, 0, SEEK_END);
+		size = ftell(f);
+		fclose(f);
+	}
+
+	return size;
 }
 
-ssize_t
+int64_t
 file_read(const char *path, void *buf, size_t size)
 {
-	ssize_t ret = -1;
-	int fd;
+	int64_t ret = -1;
+	FILE *f;
 
 	if (buf) {
-		fd = open(path, O_RDONLY);
-		if (fd < 0) {
+		f = fopen(path, "r");
+		if (f == NULL) {
 			fprintf(stderr, "fail to load '%s'\n", path);
 			ret = -1;
 		} else {
-			ret = read(fd, buf, size);
-			close(fd);
+			ret = fread(buf, sizeof(char), size, f);
+			fclose(f);
 		}
 	}
 
