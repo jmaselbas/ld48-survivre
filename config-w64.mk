@@ -5,3 +5,4 @@ LIBS += -lmingw32 -lSDL2main -lSDL2
 LIBS += -Wl,-Bstatic -lpthread -lm -Wl,-Bdynamic
 CFLAGS += -DWINDOWS
 LDFLAGS += -Wl,--no-undefined -static-libgcc
+RES += SDL2.dll

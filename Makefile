@@ -7,12 +7,18 @@ include engine/Makefile
 include game/Makefile
 include plat/Makefile
 
-obj = $(src:.c=.o)
+ifneq ($(O),)
+$(shell mkdir -p $(O))
+OUT = $(shell basename $(O))/
+endif
+
+obj = $(addprefix $(OUT),$(src:.c=.o))
 plt-src += main.c
-plt-obj = $(plt-src:.c=.o)
-BIN ?= survivre
+plt-obj = $(addprefix $(OUT),$(plt-src:.c=.o))
+NAME = survivre
+BIN = $(NAME)$(EXT)
 LIB = $(LIBDIR)/libgame.so
-RES = res/audio/casey.ogg \
+RES += res/audio/casey.ogg \
  res/audio/fx_bip_01.wav \
  res/audio/fx_crash_01.wav \
  res/audio/fx_crash_02.wav \
@@ -37,75 +43,41 @@ RES = res/audio/casey.ogg \
  res/solid.frag \
  res/screen.frag \
  res/wall.frag
-DLL = SDL2.dll
 
 # dynlib is the default target for now, not meant for release
 all: dynlib
 
-static: $(BIN);
+static: $(OUT)$(BIN);
 
 # dynlib build enable game code hot reloading
 dynlib: LDFLAGS += -ldl
 dynlib: CFLAGS += -DDYNAMIC_RELOAD
-dynlib: $(LIB) $(BIN);
+dynlib: $(OUT)$(LIB) $(OUT)$(BIN);
 
-$(LIB): $(obj)
+$(OUT)$(LIB): $(obj)
 	@mkdir -p $(dir $@)
 	$(CC) -shared $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
-$(BIN): $(plt-obj) $(obj)
+$(OUT)$(BIN): $(plt-obj) $(obj)
 	@mkdir -p $(dir $@)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LDLIBS)
 
-%.o: %.c
+$(OUT)%.o: %.c
+	@mkdir -p $(dir $@)
 	$(CC) -c -o $@ $< $(CFLAGS)
 	@$(CC) -MP -MM $< -MT $@ -MF $(call namesubst,%,.%.mk,$@) $(CFLAGS)
 
-$(BIN).x86_64: FORCE
-	make clean
-	make RELEASE=y TARGET=linux-x86_64 static
-	mv $(BIN) $@
-
-$(BIN).x86: FORCE
-	make clean
-	make RELEASE=y TARGET=linux-x86 static
-	mv $(BIN) $@
-
-$(BIN).exe: FORCE
-	make clean
-	make RELEASE=1 TARGET=w64 static
-
-$(BIN).html: FORCE
-	make clean
-	make RELEASE=1 TARGET=wasm BIN=$@ static
-
-FORCE:;
-.PHONY: FORCE
-
-$(BIN)-$(VERSION).zip: $(BIN).exe $(BIN).x86 $(BIN).x86_64 $(DLL) $(RES)
-	mkdir -p $(basename $@)
-	for i in $^; do mkdir -p $(basename $@)/$$(dirname $$i)/ && cp $$i $(basename $@)/$$(dirname $$i)/; done
-	zip -r $@ $(basename $@)
-
-$(BIN).data $(BIN).js $(BIN).wasm: $(BIN).html;
-
-$(BIN)-$(VERSION)-web.zip: $(BIN).html $(BIN).wasm $(BIN).data $(BIN).js
-	mkdir -p $(basename $@)
-	for i in $^; do mkdir -p "$(basename $@)"/$$(dirname $$i)/ && cp $$i "$(basename $@)"/$$(dirname $$i)/; done
-	mv $(basename $@)/$(BIN).html $(basename $@)/$(dir $(BIN))/index.html
-	zip -r $@ $(basename $@)
-
-dist-web: $(BIN)-$(VERSION)-web.zip
-
-dist: $(BIN)-$(VERSION).zip
-
-dist-clean:
-	rm -rf $(BIN)-$(VERSION) $(BIN)-$(VERSION)-www
+install: $(OUT)$(BIN) $(RES)
+	@mkdir -p $(DESTDIR)
+	install $< $(DESTDIR)
+	$(call synccopy, $(DESTDIR), $(RES))
 
 clean:
 	rm -f $(BIN) main.o $(obj) $(dep) $(plt-obj)
 
-.PHONY: all static dynlib clean dist dist-web dist-clean
+.PHONY: all static dynlib clean
+
+include dist.mk
 
 # namesubst perform a patsubst only on the file name, while keeping the path intact
 # usage: $(call namesubst,pattern,replacement,text)
@@ -113,6 +85,14 @@ clean:
 # produce: foo/.aa.d bar/.bb.d
 define namesubst
 	$(foreach i,$3,$(subst $(notdir $i),$(patsubst $1,$2,$(notdir $i)), $i))
+endef
+
+# synccopy perform a file copy preserving the original file path
+# usage: $(call synccopy,destination,files)
+# example: $(call synccopy,out,a b/c b/d)
+# produce: out/a out/b/c out/b/d
+define synccopy
+	$(foreach f,$2,$(info cp $f $1/$(dir $f))$(shell mkdir -p $1/$(dir $f) && cp $f $1/$(dir $f)))
 endef
 
 -include $(shell find . -name ".*.mk")

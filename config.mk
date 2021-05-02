@@ -9,6 +9,7 @@ CONFIG_SDL_AUDIO=y
 
 # Install paths
 PREFIX := /usr/local
+DESTDIR ?= .
 MANPREFIX := $(PREFIX)/share/man
 
 # Target specific configuration
