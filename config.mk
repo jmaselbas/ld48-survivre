@@ -6,6 +6,11 @@ CONFIG_JACK=n
 CONFIG_PULSE=n
 CONFIG_MINIAUDIO=n
 CONFIG_SDL_AUDIO=y
+CFLAGS-$(CONFIG_JACK) += -DCONFIG_JACK
+CFLAGS-$(CONFIG_PULSE) += -DCONFIG_PULSE
+CFLAGS-$(CONFIG_MINIAUDIO) += -DCONFIG_MINIAUDIO
+CFLAGS-$(CONFIG_SDL_AUDIO) += -DCONFIG_SDL_AUDIO
+CFLAGS += $(CFLAGS-y)
 
 # Install paths
 PREFIX := /usr/local
@@ -66,18 +71,15 @@ LIBS += -lm
 
 ifeq ($(CONFIG_JACK),y)
 LIBS += -lpthread -ljack
-CFLAGS += -DCONFIG_JACK
 endif
 ifeq ($(CONFIG_PULSE),y)
 LIBS += -lpthread -lpulse -lpulse-simple
-CFLAGS += -DCONFIG_PULSE
 endif
 ifeq ($(CONFIG_MINIAUDIO),y)
 LIBS += -lpthread
 ifneq ($(TARGET),w64)
 LIBS += -ldl
 endif
-CFLAGS += -DCONFIG_MINIAUDIO
 endif
 
 # Flags
@@ -86,5 +88,5 @@ CFLAGS += -O2 -W -fPIC -Wall -g
 ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
-CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\" -DCONFIG_SDL_AUDIO
+CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
 LDFLAGS += $(LIBS)
