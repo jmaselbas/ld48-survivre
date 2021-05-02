@@ -22,8 +22,7 @@ endif
 obj = $(addprefix $(OUT),$(src:.c=.o))
 plt-src += main.c
 plt-obj = $(addprefix $(OUT),$(plt-src:.c=.o))
-NAME = survivre
-BIN = $(NAME)$(EXT)
+BIN = survivre$(EXT)
 LIB = $(LIBDIR)/libgame.so
 RES += res/audio/casey.ogg \
  res/audio/fx_bip_01.wav \
