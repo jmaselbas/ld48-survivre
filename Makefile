@@ -69,23 +69,38 @@ $(BIN).x86: FORCE
 $(BIN).exe: FORCE
 	make clean
 	make RELEASE=1 TARGET=w64 static
+
+$(BIN).html: FORCE
+	make clean
+	make CROSS_COMPILE=em static
+
 FORCE:;
 .PHONY: FORCE
 
-"$(BIN)-$(VERSION)".zip: $(BIN).exe $(BIN).x86 $(BIN).x86_64 $(DLL) $(RES)
-	mkdir -p $(BIN)-$(VERSION)
-	for i in $^; do mkdir -p "$(BIN)-$(VERSION)"/$$(dirname $$i)/ && cp $$i "$(BIN)-$(VERSION)"/$$(dirname $$i)/; done
-	zip -r $@ "$(BIN)-$(VERSION)"
+$(BIN)-$(VERSION).zip: $(BIN).exe $(BIN).x86 $(BIN).x86_64 $(DLL) $(RES)
+	mkdir -p $(basename $@)
+	for i in $^; do mkdir -p $(basename $@)/$$(dirname $$i)/ && cp $$i $(basename $@)/$$(dirname $$i)/; done
+	zip -r $@ $(basename $@)
 
-dist: "$(BIN)-$(VERSION)".zip
+$(BIN).data $(BIN).js $(BIN).wasm: $(BIN).html;
+
+$(BIN)-$(VERSION)-web.zip: $(BIN).html $(BIN).wasm $(BIN).data $(BIN).js
+	mkdir -p $(basename $@)
+	for i in $^; do mkdir -p "$(basename $@)"/$$(dirname $$i)/ && cp $$i "$(basename $@)"/$$(dirname $$i)/; done
+	mv $(basename $@)/$(BIN).html $(basename $@)/$(dir $(BIN))/index.html
+	zip -r $@ $(basename $@)
+
+dist-web: $(BIN)-$(VERSION)-web.zip
+
+dist: $(BIN)-$(VERSION).zip
 
 dist-clean:
-	rm -rf $(BIN)-$(VERSION)
+	rm -rf $(BIN)-$(VERSION) $(BIN)-$(VERSION)-www
 
 clean:
 	rm -f $(BIN) main.o $(obj) $(dep) $(plt-obj)
 
-.PHONY: all static dynlib clean dist dist-clean
+.PHONY: all static dynlib clean dist dist-web dist-clean
 
 # namesubst perform a patsubst only on the file name, while keeping the path intact
 # usage: $(call namesubst,pattern,replacement,text)
