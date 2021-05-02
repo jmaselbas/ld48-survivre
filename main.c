@@ -61,7 +61,7 @@ unsigned int width = 1080;
 unsigned int height = 800;
 int focused;
 int show_cursor;
-static double xpre, ypre;
+static int xpre, ypre;
 
 struct game_input game_input_next;
 struct game_input game_input;
