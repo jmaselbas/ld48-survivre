@@ -6,7 +6,8 @@
 #ifndef CONFIG_LIBDIR
 #define CONFIG_LIBDIR ""
 #endif
-#ifndef STATIC
+
+#ifdef CONFIG_DYNAMIC_RELOAD
 #include <dlfcn.h>
 #endif
 
@@ -17,12 +18,6 @@
 #include "game/game.h"
 #include "plat/core.h"
 #include "plat/audio.h"
-
-#ifdef STATIC
-extern game_init_t game_init;
-extern game_step_t game_step;
-extern game_fini_t game_fini;
-#endif
 
 #define MSEC_PER_SEC 1000
 static double
@@ -334,7 +329,7 @@ struct libgame libgame = {
 static void
 libgame_reload(void)
 {
-#ifndef STATIC
+#ifdef CONFIG_DYNAMIC_RELOAD
 	time_t time;
 	int ret;
 
@@ -367,7 +362,7 @@ libgame_reload(void)
 static int
 libgame_changed(void)
 {
-#ifndef STATIC
+#ifdef CONFIG_DYNAMIC_RELOAD
 	time_t new_time;
 
 	new_time = file_time(CONFIG_LIBDIR"libgame.so");

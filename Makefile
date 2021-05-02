@@ -42,11 +42,11 @@ DLL = SDL2.dll
 # dynlib is the default target for now, not meant for release
 all: dynlib
 
-static: CFLAGS += -DSTATIC
 static: $(BIN);
 
 # dynlib build enable game code hot reloading
 dynlib: LDFLAGS += -ldl
+dynlib: CFLAGS += -DDYNAMIC_RELOAD
 dynlib: $(LIB) $(BIN);
 
 $(LIB): $(obj)
