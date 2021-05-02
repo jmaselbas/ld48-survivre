@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdarg.h>
 
+#ifndef CONFIG_LIBDIR
+#define CONFIG_LIBDIR ""
+#endif
 #ifndef STATIC
 #include <dlfcn.h>
 #endif
@@ -345,7 +348,7 @@ libgame_reload(void)
 			fprintf(stderr, "dlclose failed\n");
 	}
 
-	time = file_time("libgame.so");
+	time = file_time(CONFIG_LIBDIR"libgame.so");
 
 	/* clear previous error message  */
 	dlerror();
@@ -367,7 +370,7 @@ libgame_changed(void)
 #ifndef STATIC
 	time_t new_time;
 
-	new_time = file_time("libgame.so");
+	new_time = file_time(CONFIG_LIBDIR"libgame.so");
 
 	return libgame.time < new_time;
 #endif

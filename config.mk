@@ -6,38 +6,17 @@ CONFIG_JACK=n
 CONFIG_PULSE=n
 CONFIG_MINIAUDIO=n
 CONFIG_SDL_AUDIO=y
-CFLAGS-$(CONFIG_JACK) += -DCONFIG_JACK
-CFLAGS-$(CONFIG_PULSE) += -DCONFIG_PULSE
-CFLAGS-$(CONFIG_MINIAUDIO) += -DCONFIG_MINIAUDIO
-CFLAGS-$(CONFIG_SDL_AUDIO) += -DCONFIG_SDL_AUDIO
-CFLAGS += $(CFLAGS-y)
 
 # Install paths
 PREFIX := /usr/local
 MANPREFIX := $(PREFIX)/share/man
 
-ifeq ($(TARGET),w64)
-CROSS_COMPILE = x86_64-w64-mingw32-
-INCS := -ISDL2-2.0.14/x86_64-w64-mingw32/include/SDL2
-LIBS := -LSDL2-2.0.14/x86_64-w64-mingw32/lib
-LIBS += -lmingw32 -lSDL2main -lSDL2
-LIBS += -Wl,-Bstatic -lpthread -lm -Wl,-Bdynamic
-CFLAGS += -DWINDOWS
-LDFLAGS += -Wl,--no-undefined -static-libgcc
+# Target specific configuration
+ifeq ($(TARGET),)
+# Grab a sane default value for native target not every platform are supported
+TARGET=$(shell uname -s -m | tr 'A-Z ' 'a-z-')
 endif
-
-ifeq ($(TARGET),x86)
-PKG_CONFIG_PATH = /usr/lib32/pkgconfig/
-CFLAGS += -m32
-LDFLAGS += -m32
-LIBDIR = lib32
-LIBNAME = libgame.so
-LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR) -rdynamic
-else ifeq ($(TARGET),)
-LIBDIR = lib64
-LIBNAME = libgame.so
-LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR) -rdynamic
-endif
+include config-$(TARGET).mk
 
 ifneq ($(CROSS_COMPILE),)
 CC      = $(CROSS_COMPILE)cc
@@ -51,36 +30,25 @@ OBJSIZE = $(CROSS_COMPILE)size
 STRIP   = $(CROSS_COMPILE)strip
 endif
 
-ifeq ($(CC),emcc)
-CFLAGS += -s USE_SDL=2
-LDFLAGS += -s USE_SDL=2 -s USE_WEBGL2=1 -s FULL_ES3=1
-LDFLAGS += -s ASSERTIONS=1 -s TOTAL_MEMORY=$$(( 8 * 64 * 1024 * 1024 ))
-LDFLAGS += $(foreach r,$(RES),--preload-file $(r))
-BIN = survivre.html
-PKG = emconfigure pkg-config
-endif
-
 PKG_CONFIG_PATH ?= /usr/lib/pkgconfig/
 PKG ?= PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) pkg-config
-PKG ?= pkg-config
 
 # Depencies includes and libs
 INCS ?= $(shell $(PKG) --cflags sdl2)
 LIBS ?= $(shell $(PKG) --libs sdl2)
 LIBS += -lm
 
-ifeq ($(CONFIG_JACK),y)
-LIBS += -lpthread -ljack
-endif
-ifeq ($(CONFIG_PULSE),y)
-LIBS += -lpthread -lpulse -lpulse-simple
-endif
-ifeq ($(CONFIG_MINIAUDIO),y)
-LIBS += -lpthread
-ifneq ($(TARGET),w64)
-LIBS += -ldl
-endif
-endif
+# Config specific flags
+CFLAGS-$(CONFIG_JACK) += -DCONFIG_JACK
+CFLAGS-$(CONFIG_PULSE) += -DCONFIG_PULSE
+CFLAGS-$(CONFIG_MINIAUDIO) += -DCONFIG_MINIAUDIO
+CFLAGS-$(CONFIG_SDL_AUDIO) += -DCONFIG_SDL_AUDIO
+LIBS-$(CONFIG_JACK) += -lpthread -ljack
+LIBS-$(CONFIG_PULSE) += -lpthread -lpulse
+LIBS-$(CONFIG_MINIAUDIO) += -lpthread
+
+LIBS += $(LIBS-y)
+CFLAGS += $(CFLAGS-y)
 
 # Flags
 CFLAGS += -D_XOPEN_SOURCE=600 -D_POSIX_C_SOURCE=200112L
@@ -88,5 +56,6 @@ CFLAGS += -O2 -W -fPIC -Wall -g
 ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
-CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
+CFLAGS += -DVERSION=\"$(VERSION)\" -DCONFIG_LIBDIR=\"$(LIBDIR)/\"
+CFLAGS += $(INCS)
 LDFLAGS += $(LIBS)

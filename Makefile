@@ -8,9 +8,10 @@ include game/Makefile
 include plat/Makefile
 
 obj = $(src:.c=.o)
+plt-src += main.c
 plt-obj = $(plt-src:.c=.o)
 BIN ?= survivre
-LIB = $(LIBDIR)/$(LIBNAME)
+LIB = $(LIBDIR)/libgame.so
 RES = res/audio/casey.ogg \
  res/audio/fx_bip_01.wav \
  res/audio/fx_crash_01.wav \
@@ -52,18 +53,22 @@ $(LIB): $(obj)
 	@mkdir -p $(dir $@)
 	$(CC) -shared $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
-$(BIN): main.o $(plt-obj) $(obj)
+$(BIN): $(plt-obj) $(obj)
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(LDLIBS)
+
+%.o: %.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+	@$(CC) -MP -MM $< -MT $@ -MF $(call namesubst,%,.%.mk,$@) $(CFLAGS)
 
 $(BIN).x86_64: FORCE
 	make clean
-	make RELEASE=y static
+	make RELEASE=y TARGET=linux-x86_64 static
 	mv $(BIN) $@
 
 $(BIN).x86: FORCE
 	make clean
-	make RELEASE=y TARGET=x86 static
+	make RELEASE=y TARGET=linux-x86 static
 	mv $(BIN) $@
 
 $(BIN).exe: FORCE
@@ -72,7 +77,7 @@ $(BIN).exe: FORCE
 
 $(BIN).html: FORCE
 	make clean
-	make CROSS_COMPILE=em static
+	make RELEASE=1 TARGET=wasm BIN=$@ static
 
 FORCE:;
 .PHONY: FORCE
@@ -110,15 +115,4 @@ define namesubst
 	$(foreach i,$3,$(subst $(notdir $i),$(patsubst $1,$2,$(notdir $i)), $i))
 endef
 
-dep = $(call namesubst,%,.%.mk,$(src) $(plt-src))
-
-# special rule to generate dependency rules for every object file (.o)
-# mainly used to trigger recompilation on header file change
-plat/.%.mk: plat/%
-	$(CC) -E -MM -MT $(^:.c=.o) $^ -MF $@
-game/.%.mk: game/%
-	$(CC) -E -MM -MT $(^:.c=.o) $^ -MF $@
-engine/.%.mk: engine/%
-	$(CC) -E -MM -MT $(^:.c=.o) $^ -MF $@
-
--include $(dep)
+-include $(shell find . -name ".*.mk")
