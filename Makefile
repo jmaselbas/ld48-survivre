@@ -1,6 +1,13 @@
 # See LICENSE file for copyright and license details.
 .POSIX:
 
+# Makefile usage: make [option] [target]
+# This makefile accept some specific options:
+# O=<build-dir>        out-of-tree build dir, compilation objects will be there
+# TARGET=<target>      targeted build system, available: linux-x86_64 linux-x86 w64 wasm
+# DESTDIR=<dir>        destination dir, "fake" root directory for distributing an installation
+# CROSS_COMPILE=<name> name prefix for an external toolchain, ex: arm-none-eabi-
+
 include config.mk
 
 include engine/Makefile

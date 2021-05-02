@@ -1,7 +1,7 @@
 # game version
 VERSION = 0.48.4
 
-# Customize below to fit system
+# Customize below to fit your system
 CONFIG_JACK=n
 CONFIG_PULSE=n
 CONFIG_MINIAUDIO=n
@@ -9,12 +9,11 @@ CONFIG_SDL_AUDIO=y
 
 # Install paths
 PREFIX := /usr/local
-DESTDIR ?= .
 MANPREFIX := $(PREFIX)/share/man
 
 # Target specific configuration
 ifeq ($(TARGET),)
-# Grab a sane default value for native target not every platform are supported
+# Grab a sane default value for native target, not every platform are supported
 TARGET=$(shell uname -s -m | tr 'A-Z ' 'a-z-')
 endif
 include config-$(TARGET).mk
