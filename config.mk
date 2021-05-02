@@ -4,7 +4,8 @@ VERSION = 0.48.3
 # Customize below to fit system
 CONFIG_JACK=n
 CONFIG_PULSE=n
-CONFIG_MINIAUDIO=y
+CONFIG_MINIAUDIO=n
+CONFIG_SDL_AUDIO=y
 
 # Install paths
 PREFIX := /usr/local
@@ -84,5 +85,5 @@ CFLAGS += -O2 -W -fPIC -Wall -g
 ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
-CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\"
+CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\" -DCONFIG_SDL_AUDIO
 LDFLAGS += $(LIBS) -rdynamic

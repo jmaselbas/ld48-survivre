@@ -46,6 +46,12 @@ extern struct audio_io *miniaudio_io;
 #define miniaudio_io NULL
 #endif
 
+#ifdef CONFIG_SDL_AUDIO
+extern struct audio_io *sdl_audio_io;
+#else
+#define sdl_audio_io NULL
+#endif
+
 struct audio_io *audio_io;
 
 static size_t
@@ -86,6 +92,8 @@ audio_init(struct audio_state *audio)
 		audio_io = pulse_io;
 	if (!audio_io && miniaudio_io)
 		audio_io = miniaudio_io;
+	if (!audio_io && sdl_audio_io)
+		audio_io = sdl_audio_io;
 	if (!audio_io)
 		audio_io = dummy_io;
 
