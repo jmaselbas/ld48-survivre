@@ -273,19 +273,25 @@ window_poll_events(void)
 	glfwPollEvents();
 }
 
+struct libgame libgame = {
+	.init = game_init,
+	.step = game_step,
+	.fini = game_fini,
+};
+
 static void
-libgame_reload(struct libgame *libgame)
+libgame_reload(void)
 {
 #ifndef STATIC
 	time_t time;
 	int ret;
 
-	libgame->init = NULL;
-	libgame->step = NULL;
-	libgame->fini = NULL;
+	libgame.init = NULL;
+	libgame.step = NULL;
+	libgame.fini = NULL;
 
-	if (libgame->handle) {
-		ret = dlclose(libgame->handle);
+	if (libgame.handle) {
+		ret = dlclose(libgame.handle);
 		if (ret)
 			fprintf(stderr, "dlclose failed\n");
 	}
@@ -295,26 +301,26 @@ libgame_reload(struct libgame *libgame)
 	/* clear previous error message  */
 	dlerror();
 
-	libgame->handle = dlopen("libgame.so", RTLD_NOW);
+	libgame.handle = dlopen("libgame.so", RTLD_NOW);
 
-	if (libgame->handle) {
-		libgame->init = dlsym(libgame->handle, "game_init");
-		libgame->step = dlsym(libgame->handle, "game_step");
-		libgame->fini = dlsym(libgame->handle, "game_fini");
-		libgame->time = time;
+	if (libgame.handle) {
+		libgame.init = dlsym(libgame.handle, "game_init");
+		libgame.step = dlsym(libgame.handle, "game_step");
+		libgame.fini = dlsym(libgame.handle, "game_fini");
+		libgame.time = time;
 	}
 #endif
 }
 
 static int
-libgame_changed(struct libgame *libgame)
+libgame_changed(void)
 {
 #ifndef STATIC
 	time_t new_time;
 
 	new_time = file_time("libgame.so");
 
-	return libgame->time < new_time;
+	return libgame.time < new_time;
 #endif
 	return 0;
 }
@@ -339,12 +345,6 @@ alloc_game_memory(struct game_memory *memory)
 	memory->asset = alloc_memory_zone(NULL, SZ_4M, SZ_16M);
 	memory->audio = alloc_memory_zone(NULL, SZ_4M, SZ_16M);
 }
-
-struct libgame libgame = {
-	.init = game_init,
-	.step = game_step,
-	.fini = game_fini,
-};
 
 static void
 main_loop_step(void)
@@ -376,7 +376,7 @@ main(int argc, char **argv)
 
 	alloc_game_memory(&game_memory);
 
-	libgame_reload(&libgame);
+	libgame_reload();
 
 	window_init(argv[0]);
 
@@ -390,8 +390,8 @@ main(int argc, char **argv)
 	audio_init(&audio_state);
 
 	while (!window_should_close()) {
-		if (libgame_changed(&libgame))
-			libgame_reload(&libgame);
+		if (libgame_changed())
+			libgame_reload();
 		main_loop_step();
 		rate_limit(300);
 	}
