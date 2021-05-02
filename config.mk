@@ -13,13 +13,12 @@ MANPREFIX := $(PREFIX)/share/man
 
 ifeq ($(TARGET),w64)
 CROSS_COMPILE = x86_64-w64-mingw32-
-INCS := -Iglfw-3.3.2.bin.WIN64/include
-LIBS := -Lglfw-3.3.2.bin.WIN64/lib-mingw-w64
-LIBS += -lopengl32 -luser32 -lkernel32 -lgdi32 -lglu32 -lm
-LIBS += -lglfw3dll
-CFLAGS += -DGLFW_DLL -DWINDOWS
-# only static build is supported
-LDFLAGS += --static -Wl,--no-undefined -static-libgcc
+INCS := -ISDL2-2.0.14/x86_64-w64-mingw32/include/SDL2
+LIBS := -LSDL2-2.0.14/x86_64-w64-mingw32/lib
+LIBS += -lmingw32 -lSDL2main -lSDL2
+LIBS += -Wl,-Bstatic -lpthread -lm -Wl,-Bdynamic
+CFLAGS += -DWINDOWS
+LDFLAGS += -Wl,--no-undefined -static-libgcc
 endif
 
 ifeq ($(TARGET),x86)
@@ -28,11 +27,11 @@ CFLAGS += -m32
 LDFLAGS += -m32
 LIBDIR = lib32
 LIBNAME = libgame.so
-LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
+LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR) -rdynamic
 else ifeq ($(TARGET),)
 LIBDIR = lib64
 LIBNAME = libgame.so
-LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR)
+LDFLAGS += -L$(LIBDIR) -Wl,-rpath=./$(LIBDIR) -rdynamic
 endif
 
 ifneq ($(CROSS_COMPILE),)
@@ -88,4 +87,4 @@ ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
 CFLAGS += $(INCS) -DVERSION=\"$(VERSION)\" -DCONFIG_SDL_AUDIO
-LDFLAGS += $(LIBS) -rdynamic
+LDFLAGS += $(LIBS)

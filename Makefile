@@ -36,7 +36,7 @@ RES = res/audio/casey.ogg \
  res/solid.frag \
  res/screen.frag \
  res/wall.frag
-DLL = glfw3.dll
+DLL = SDL2.dll
 
 # dynlib is the default target for now, not meant for release
 all: dynlib
