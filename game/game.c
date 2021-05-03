@@ -5,7 +5,6 @@
 #include <fcntl.h>
 
 #include <string.h>
-#include "engine/engine.h"
 #include "game.h"
 #include "asset.h"
 
@@ -84,30 +83,6 @@ ray_intersect_mesh(vec3 org, vec3 dir, struct mesh *mesh, mat4 *xfrm)
 	return q;
 }
 
-void *
-mempush(struct memory_zone *zone, size_t size)
-{
-	void *addr = NULL;
-
-	if (zone->used + size <= zone->size) {
-		addr = zone->base + zone->used;
-		zone->used += size;
-	} else {
-		die("mempush: Not enough memory\n");
-	}
-
-	return addr;
-}
-
-void
-mempull(struct memory_zone *zone, size_t size)
-{
-	if (size > zone->used)
-		die("mempull: Freed too much memory\n");
-
-	zone->used -= size;
-}
-
 struct texture {
 	GLuint id;
 	GLenum type;
@@ -116,7 +91,7 @@ struct texture {
 
 struct game_state {
 	struct game_asset *game_asset;
-	struct game_input input;
+	struct input input;
 	struct window_io *window_io;
 	float last_time;
 
@@ -270,12 +245,6 @@ game_fini(struct game_memory *memory)
 {
 	struct game_asset *game_asset = memory->asset.base;
 	game_asset_fini(game_asset);
-}
-
-static int
-key_pressed(struct game_input *input, int key)
-{
-	return input->keys[key] == KEY_PRESSED;
 }
 
 enum entity_type {
@@ -530,7 +499,7 @@ debug_origin_mark(struct render_queue *rqueue)
 }
 
 static void
-flycam_move(struct game_state *game_state, struct game_input *input, float dt)
+flycam_move(struct game_state *game_state, struct input *input, float dt)
 {
 	vec3 forw = camera_get_dir(&game_state->cam);
 	vec3 left = camera_get_left(&game_state->cam);
@@ -617,7 +586,7 @@ game_enter_state(struct game_state *game_state, int state)
 }
 
 static void
-game_menu(struct game_state *game_state, struct game_input *input, struct render_queue *rqueue)
+game_menu(struct game_state *game_state, struct input *input, struct render_queue *rqueue)
 {
 	float ratio = (double)input->width / (double)input->height;
 	vec3 scale = { 0.25, 0.25 * ratio, 0};
@@ -704,7 +673,7 @@ game_menu(struct game_state *game_state, struct game_input *input, struct render
 }
 
 static void
-game_play(struct game_state *game_state, struct game_input *input, float dt, struct render_queue *rqueue)
+game_play(struct game_state *game_state, struct input *input, float dt, struct render_queue *rqueue)
 {
 	struct game_asset *game_asset = game_state->game_asset;
 	vec3 wall_scale = (vec3){1, 1, 1};
@@ -937,7 +906,7 @@ game_play(struct game_state *game_state, struct game_input *input, float dt, str
 }
 
 void
-game_step(struct game_memory *memory, struct game_input *input, struct game_audio *audio)
+game_step(struct game_memory *memory, struct input *input, struct audio *audio)
 {
 	struct game_state *game_state = memory->state.base;
 	struct game_asset *game_asset = memory->asset.base;

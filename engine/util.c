@@ -25,3 +25,27 @@ die(const char *fmt, ...)
 
 	exit(1);
 }
+
+void *
+mempush(struct memory_zone *zone, size_t size)
+{
+	void *addr = NULL;
+
+	if (zone->used + size <= zone->size) {
+		addr = zone->base + zone->used;
+		zone->used += size;
+	} else {
+		die("mempush: Not enough memory\n");
+	}
+
+	return addr;
+}
+
+void
+mempull(struct memory_zone *zone, size_t size)
+{
+	if (size > zone->used)
+		die("mempull: Freed too much memory\n");
+
+	zone->used -= size;
+}

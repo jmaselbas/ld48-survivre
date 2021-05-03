@@ -63,9 +63,9 @@ int focused;
 int show_cursor;
 static int xpre, ypre;
 
-struct game_input game_input_next;
-struct game_input game_input;
-struct game_audio game_audio;
+struct input game_input_next;
+struct input game_input;
+struct audio game_audio;
 struct game_memory game_memory;
 
 struct audio_config audio_config = {
@@ -103,7 +103,7 @@ struct window_io glfw_io = {
 };
 
 static void
-swap_input(struct game_input *new, struct game_input *buf)
+swap_input(struct input *new, struct input *buf)
 {
 	/* input buffering: this is to make sure that input callbacks
 	 * doesn't modify the game input while the game step runs. */
@@ -198,7 +198,7 @@ focus_event(int focus)
 static void
 mouse_motion_event(int xpos, int ypos, int xinc, int yinc)
 {
-	struct game_input *input = &game_input_next;
+	struct input *input = &game_input_next;
 
 	if (focused) {
 		input->xpos = xpos;
@@ -213,7 +213,7 @@ mouse_motion_event(int xpos, int ypos, int xinc, int yinc)
 static void
 mouse_button_event(int button, int act)
 {
-	struct game_input *input = &game_input_next;
+	struct input *input = &game_input_next;
 
 	if (button >= 0 && button < (int)ARRAY_LEN(input->buttons))
 		input->buttons[button] = act;
@@ -222,7 +222,7 @@ mouse_button_event(int button, int act)
 static void
 key_event(int key, int mod, int act)
 {
-	struct game_input *input = &game_input_next;
+	struct input *input = &game_input_next;
 
 	if (key == KEY_BACKSPACE) {
 		/* TODO: fix key mod */ 

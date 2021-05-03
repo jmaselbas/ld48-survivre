@@ -2,21 +2,20 @@
 #define ENGINE_H
 
 #include <stddef.h>
+#include <math.h>
 
 #include <plat/glad.h>
 
-#include <math.h>
-
 #include "util.h"
 #include "math.h"
-
+#include "input.h"
 #include "mesh.h"
 #include "camera.h"
 
 #include "ring_buffer.h"
 
-#include "wav.h"
-#include "sampler.h"
+#include "audio.h"
+
 struct shader {
 	GLuint prog;
 	GLuint vert;
