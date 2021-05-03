@@ -4,6 +4,7 @@
 #define KEY_RELEASED            0
 #define KEY_PRESSED             1
 
+#define KEY_UNKNOWN             0
 #define KEY_SPACE              32
 #define KEY_APOSTROPHE         39  /* ' */
 #define KEY_COMMA              44  /* , */

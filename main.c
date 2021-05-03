@@ -225,9 +225,7 @@ key_event(int key, int mod, int act)
 	struct input *input = &game_input_next;
 
 	if (key == KEY_BACKSPACE) {
-		/* TODO: fix key mod */ 
-		if ((mod & (KMOD_ALT | KMOD_CTRL))
-			== (KMOD_ALT | KMOD_CTRL))
+		if ((mod & KMOD_ALT) && (mod & KMOD_CTRL))
 			should_close = 1;
 	}
 
@@ -240,7 +238,7 @@ map_key(SDL_Keycode sym)
 {
 	switch (sym) {
 	case SDLK_UNKNOWN:
-	default: return 0;
+	default: return KEY_UNKNOWN;
 	case SDLK_RETURN: return KEY_ENTER;
 	case SDLK_ESCAPE: return KEY_ESCAPE;
 	case SDLK_BACKSPACE: return KEY_BACKSPACE;
@@ -276,6 +274,13 @@ map_key(SDL_Keycode sym)
 	case SDLK_LEFT:  return KEY_LEFT;
 	case SDLK_DOWN:  return KEY_DOWN;
 	case SDLK_UP:    return KEY_UP;
+		/* scan codes */
+	case SDL_SCANCODE_LCTRL:  return KEY_LEFT_CONTROL;
+	case SDL_SCANCODE_LSHIFT: return KEY_LEFT_SHIFT;
+	case SDL_SCANCODE_LALT:   return KEY_LEFT_ALT;
+	case SDL_SCANCODE_RCTRL:  return KEY_RIGHT_CONTROL;
+	case SDL_SCANCODE_RSHIFT: return KEY_RIGHT_SHIFT;
+	case SDL_SCANCODE_RALT:   return KEY_RIGHT_ALT;
 	}
 }
 
@@ -297,7 +302,7 @@ window_poll_events(void)
 			break;
 		case SDL_KEYDOWN:
 		case SDL_KEYUP:
-			key = map_key(e.key.keysym.sym);
+			key = map_key(e.key.keysym.sym & ~SDLK_SCANCODE_MASK);
 			mod = e.key.keysym.mod;
 			act = e.key.state == SDL_PRESSED ? KEY_PRESSED : KEY_RELEASED;
 			key_event(key, mod, act);
