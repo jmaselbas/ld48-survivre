@@ -76,7 +76,8 @@ $(OUT)%.o: %.c
 install: $(OUT)$(BIN) $(RES)
 	@mkdir -p $(DESTDIR)
 	install $< $(DESTDIR)
-	$(call synccopy, $(DESTDIR), $(RES))
+# tar is used here to copy files while preserving the original path of each file
+	tar cf - $(RES) | tar xf - -C $(DESTDIR)
 
 clean:
 	rm -f $(BIN) main.o $(obj) $(dep) $(plt-obj)
@@ -91,14 +92,6 @@ include dist.mk
 # produce: foo/.aa.d bar/.bb.d
 define namesubst
 	$(foreach i,$3,$(subst $(notdir $i),$(patsubst $1,$2,$(notdir $i)), $i))
-endef
-
-# synccopy perform a file copy preserving the original file path
-# usage: $(call synccopy,destination,files)
-# example: $(call synccopy,out,a b/c b/d)
-# produce: out/a out/b/c out/b/d
-define synccopy
-	$(foreach f,$2,$(info cp $f $1/$(dir $f))$(shell mkdir -p $1/$(dir $f) && cp $f $1/$(dir $f)))
 endef
 
 -include $(shell find . -name ".*.mk")
