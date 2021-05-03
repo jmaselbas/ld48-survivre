@@ -57,5 +57,5 @@ ifneq ($(RELEASE),)
 CFLAGS += -s -ffunction-sections
 endif
 CFLAGS += -DVERSION=\"$(VERSION)\" -DCONFIG_LIBDIR=\"$(LIBDIR)/\"
-CFLAGS += $(INCS)
+CFLAGS += -I. $(INCS)
 LDFLAGS += $(LIBS)

@@ -11,7 +11,7 @@
 #include <dlfcn.h>
 #endif
 
-#include <glad.h>
+#include "plat/glad.h"
 #include <SDL.h>
 
 #include "engine/engine.h"

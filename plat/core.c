@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "core.h"
+#include "plat/core.h"
 
 void *
 xvmalloc(void *base, size_t align, size_t size)

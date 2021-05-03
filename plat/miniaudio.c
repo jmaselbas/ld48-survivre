@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <string.h>
-#include "core.h"
-#include "audio.h"
+#include "plat/core.h"
+#include "plat/audio.h"
 
 #include "miniaudio.h"
 

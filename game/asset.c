@@ -5,7 +5,7 @@
 #include <string.h>
 #include <fcntl.h>
 
-#include "../engine/engine.h"
+#include "engine/engine.h"
 #include "game.h"
 #include "asset.h"
 

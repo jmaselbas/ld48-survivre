@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include <glad.h>
+#include <plat/glad.h>
 
 #include <math.h>
 

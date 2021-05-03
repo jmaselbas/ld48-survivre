@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../engine/util.h"
+#include "engine/util.h"
 
 #define UNUSED(arg) ((void)arg)
 
